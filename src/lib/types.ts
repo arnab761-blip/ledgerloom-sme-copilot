@@ -1,0 +1,119 @@
+export type CostClassification = 'fixed' | 'variable';
+export type TransactionType = 'income' | 'expense';
+
+export interface BusinessProfile {
+  businessName: string;
+  industry: string; // e.g. "Garments & Apparel Manufacturing"
+  startDate: string; // e.g. "2024-01-15"
+  initialInvestment: number; // e.g. 500000 BDT
+  workerCount: number; // e.g. 12
+  workerSalariesMonthly: number; // total wages e.g. 120000 BDT
+  electricityBillMonthly: number; // e.g. 18000 BDT
+  rentMonthly: number; // e.g. 25000 BDT
+  maintenanceMonthly: number; // e.g. 5000 BDT
+  otherFixedCostsMonthly: number; // e.g. 4000 BDT
+  primaryProduct: string; // e.g. "Cotton T-Shirt"
+  unitSellingPrice: number; // e.g. 450 BDT
+  unitVariableCost: number; // fabric + thread + wash e.g. 220 BDT
+  fabricMetersPerUnit: number; // e.g. 1.25 meters
+  fabricCostPerMeter: number; // e.g. 120 BDT
+  currency: string; // "BDT" or "USD"
+}
+
+export interface Transaction {
+  id: string;
+  date: string;
+  type: TransactionType;
+  category: string;
+  costType: CostClassification;
+  amount: number;
+  description: string;
+  partyName?: string;
+  paymentMethod: 'cash' | 'bank_transfer' | 'mobile_money' | 'cheque';
+  status: 'pending_approval' | 'approved' | 'rejected';
+  source: 'manual_form' | 'receipt_ocr' | 'automated_import' | 'ai_agent';
+  evidenceNote?: string;
+  createdAt: string;
+}
+
+export interface DebtorRecord {
+  id: string;
+  partyName: string;
+  contactNumber: string;
+  type: 'receivable' | 'payable'; // receivable = বাকি টাকা পাই; payable = ঋণ/দেনা
+  amount: number;
+  originalAmount: number;
+  issueDate: string;
+  dueDate: string;
+  status: 'pending' | 'overdue' | 'settled';
+  alertThreshold: number; // default 30000
+  notes?: string;
+  reminderSentCount: number;
+  lastReminderDate?: string;
+}
+
+export interface LoanLiability {
+  id: string;
+  lenderName: string;
+  lenderType: 'bank' | 'mfi' | 'individual' | 'supplier_credit';
+  principal: number;
+  annualInterestRate: number; // e.g. 9.5%
+  tenureMonths: number;
+  monthlyEMI: number;
+  startDate: string;
+  totalPaid: number;
+  remainingBalance: number;
+  nextPaymentDate: string;
+  status: 'active' | 'closed';
+}
+
+export interface TargetProfitPlan {
+  targetProfit: number;
+  period: 'month' | 'quarter' | 'year';
+  totalFixedCost: number;
+  unitContributionMargin: number; // Selling Price - Variable Cost
+  requiredUnits: number;
+  requiredRevenue: number;
+  requiredFabricMeters: number;
+  requiredFabricCost: number;
+  breakEvenUnits: number;
+  breakEvenRevenue: number;
+  marginOfSafetyPercentage: number;
+  actionableSteps: string[];
+}
+
+export interface FinancialHealthMetrics {
+  totalRevenue: number;
+  totalExpenses: number;
+  totalFixedCosts: number;
+  totalVariableCosts: number;
+  netProfit: number;
+  netMarginPercentage: number;
+  breakEvenProgressPercentage: number;
+  cashRunwayDays: number;
+  totalReceivables: number;
+  totalPayables: number;
+  highRiskReceivablesCount: number; // > threshold
+  monthlyLoanObligation: number;
+  debtToIncomeRatio: number;
+}
+
+export type PermissionTier = 'Tier-1-Read' | 'Tier-2-Simulate' | 'Tier-3-Communicate' | 'Tier-4-Execute';
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  actor: 'owner' | 'ai_copilot' | 'system_cron';
+  action: string;
+  permissionTier: PermissionTier;
+  targetEntity: string;
+  details: string;
+  status: 'success' | 'flagged' | 'blocked';
+}
+
+export interface SecuritySessionState {
+  isUnlocked: boolean;
+  unlockedAt: number | null;
+  expiresAt: number | null;
+  timeoutMinutes: number; // 30 mins
+}
