@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { DebtorRecord, BusinessProfile } from '@/lib/types';
 import { SupportedLanguage, getTranslation } from '@/lib/i18n';
+import { SupportedCurrency, convertCurrency, getOverdueThreshold } from '@/lib/currency';
 
 interface DebtorsProps {
   debtors: DebtorRecord[];
@@ -22,6 +23,7 @@ interface DebtorsProps {
   isUnlocked: boolean;
   onRequireUnlock: () => void;
   currentLanguage: SupportedLanguage;
+  currentCurrency?: SupportedCurrency;
 }
 
 export const DebtorsAlerts: React.FC<DebtorsProps> = ({
@@ -32,7 +34,11 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
   isUnlocked,
   onRequireUnlock,
   currentLanguage,
+  currentCurrency = 'BDT',
 }) => {
+  const activeCurrency = currentCurrency || profile.currency || 'BDT';
+  const conv = (amt: number) => convertCurrency(amt, 'BDT', activeCurrency);
+
   const t = (key: string, params?: Record<string, string | number>) =>
     getTranslation(currentLanguage, key, params);
 
@@ -48,49 +54,51 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
 
-  const threshold = 30000;
+  const threshold = getOverdueThreshold(activeCurrency);
   const receivables = debtors.filter((d) => d.type === 'receivable');
-  const highRiskList = receivables.filter((d) => d.amount >= (d.alertThreshold || threshold));
+  const highRiskList = receivables.filter((d) => d.amount >= (d.alertThreshold || 30000));
 
   const generateMessageDraft = (d: DebtorRecord, tone: 'polite' | 'formal' | 'urgent') => {
+    const formattedAmt = conv(d.amount).toLocaleString();
+
     if (currentLanguage === 'zh') {
       if (tone === 'urgent') {
-        return `加急账单催缴通知: 尊敬的 (${d.partyName})，关于由【${profile.businessName}】交付的订单，您尚有未结款项共计 ${d.amount.toLocaleString()} ${profile.currency}，现已超出约定付款期限（到期日: ${d.dueDate}）。为保障工厂工人工资结算及正常运转，请于未来 48 小时内完成结算。致礼，${profile.businessName}。`;
+        return `加急账单催缴通知: 尊敬的 (${d.partyName})，关于由【${profile.businessName}】交付的订单，您尚有未结款项共计 ${formattedAmt} ${activeCurrency}，现已超出约定付款期限（到期日: ${d.dueDate}）。为保障工厂工人工资结算及正常运转，请于未来 48 小时内完成结算。致礼，${profile.businessName}。`;
       }
       if (tone === 'formal') {
-        return `尊敬的 (${d.partyName})，您好！${profile.businessName} 财务部门特此函告，您处尚有未结算账款 ${d.amount.toLocaleString()} ${profile.currency}（约定付款日: ${d.dueDate}）。请于银行营业时间内安排转账结算。顺颂商祺。`;
+        return `尊敬的 (${d.partyName})，您好！${profile.businessName} 财务部门特此函告，您处尚有未结算账款 ${formattedAmt} ${activeCurrency}（约定付款日: ${d.dueDate}）。请于银行营业时间内安排转账结算。顺颂商祺。`;
       }
-      return `您好 (${d.partyName})！温馨提醒您，上期交付的订单款项 ${d.amount.toLocaleString()} ${profile.currency} 尚未结清。我们下周将订购新一批生产物料，若您能协助尽快安排付款将不胜感激。祝商祺！`;
+      return `您好 (${d.partyName})！温馨提醒您，上期交付的订单款项 ${formattedAmt} ${activeCurrency} 尚未结清。我们下周将订购新一批生产物料，若您能协助尽快安排付款将不胜感激。祝商祺！`;
     }
 
     if (currentLanguage === 'hi') {
       if (tone === 'urgent') {
-        return `अति-आवश्यक बकाया नोटिस: प्रिय (${d.partyName}), ${profile.businessName} से पिछली डिलीवरी के विरुद्ध आपका कुल बकाया ${d.amount.toLocaleString()} ${profile.currency} नियत तिथि (${d.dueDate}) पार कर चुका है। वेतन और नियमित खर्चों के लिए कृपया आगामी 48 घंटों में भुगतान सुनिश्चित करें। धन्यवाद, ${profile.businessName}।`;
+        return `अति-आवश्यक बकाया नोटिस: प्रिय (${d.partyName}), ${profile.businessName} से पिछली डिलीवरी के विरुद्ध आपका कुल बकाया ${formattedAmt} ${activeCurrency} नियत तिथि (${d.dueDate}) पार कर चुका है। वेतन और नियमित खर्चों के लिए कृपया आगामी 48 घंटों में भुगतान सुनिश्चित करें। धन्यवाद, ${profile.businessName}।`;
       }
       if (tone === 'formal') {
-        return `प्रिय (${d.partyName}), नमस्कार। ${profile.businessName} के लेखा विभाग से सूचित किया जाता है कि आपका बकाया ${d.amount.toLocaleString()} ${profile.currency} देय है (अंतिम तिथि: ${d.dueDate})। कृपया बैंकिंग समय में भुगतान की व्यवस्था करें। धन्यवाद।`;
+        return `प्रिय (${d.partyName}), नमस्कार। ${profile.businessName} के लेखा विभाग से सूचित किया जाता है कि आपका बकाया ${formattedAmt} ${activeCurrency} देय है (अंतिम तिथि: ${d.dueDate})। कृपया बैंकिंग समय में भुगतान की व्यवस्था करें। धन्यवाद।`;
       }
-      return `नमस्ते (${d.partyName}), आशा है आप सकुशल हैं। पिछले ऑर्डर के बकाया ${d.amount.toLocaleString()} ${profile.currency} के संदर्भ में यह अनुस्मारक है। अगले सप्ताह सामग्री खरीदनी है, अतः शीघ्र भुगतान होने पर अत्यंत सुविधा होगी। धन्यवाद!`;
+      return `नमस्ते (${d.partyName}), आशा है आप सकुशल हैं। पिछले ऑर्डर के बकाया ${formattedAmt} ${activeCurrency} के संदर्भ में यह अनुस्मारक है। अगले सप्ताह सामग्री खरीदनी है, अतः शीघ्र भुगतान होने पर अत्यंत सुविधा होगी। धन्यवाद!`;
     }
 
     if (currentLanguage === 'bn') {
       if (tone === 'urgent') {
-        return `জরুরি বকেয়া নোটিশ: জনাব/মালিকপক্ষ (${d.partyName}), ${profile.businessName}-এর পূর্ববর্তী ডেলিভারির বিপরীতে আপনার নিকট সর্বমোট ${d.amount.toLocaleString()} ${profile.currency} পাওনা রয়েছে, যা নির্ধারিত মেয়াদ (${d.dueDate}) অতিক্রান্ত করেছে। কারখানার কর্মীদের চলতি মাসের বেতন ও চলতি খরচের জন্য আগামী ৪৮ ঘণ্টার মধ্যে উক্ত টাকা পরিশোধের বিশেষ অনুরোধ রইল। ধন্যবাদান্তে, ${profile.businessName}।`;
+        return `জরুরি বকেয়া নোটিশ: জনাব/মালিকপক্ষ (${d.partyName}), ${profile.businessName}-এর পূর্ববর্তী ডেলিভারির বিপরীতে আপনার নিকট সর্বমোট ${formattedAmt} ${activeCurrency} পাওনা রয়েছে, যা নির্ধারিত মেয়াদ (${d.dueDate}) অতিক্রান্ত করেছে। কারখানার কর্মীদের চলতি মাসের বেতন ও চলতি খরচের জন্য আগামী ৪৮ ঘণ্টার মধ্যে উক্ত টাকা পরিশোধের বিশেষ অনুরোধ রইল। ধন্যবাদান্তে, ${profile.businessName}।`;
       }
       if (tone === 'formal') {
-        return `প্রিয় (${d.partyName}), সালাম ও শুভেচ্ছা রইল। আশা করি ভালো আছেন। ${profile.businessName}-এর অ্যাকাউন্টস বিভাগ থেকে জানানো যাচ্ছে যে, আপনার নিকট ${d.amount.toLocaleString()} ${profile.currency} বকেয়া পাওনা রয়েছে (বিল মেয়াদ: ${d.dueDate})। দয়া করে ব্যাংকিং সময়ের মধ্যে পেমেন্টটি নিশ্চিত করার ব্যবস্থা গ্রহণ করবেন। ধন্যবাদ।`;
+        return `প্রিয় (${d.partyName}), সালাম ও শুভেচ্ছা রইল। আশা করি ভালো আছেন। ${profile.businessName}-এর অ্যাকাউন্টস বিভাগ থেকে জানানো যাচ্ছে যে, আপনার নিকট ${formattedAmt} ${activeCurrency} বকেয়া পাওনা রয়েছে (বিল মেয়াদ: ${d.dueDate})। দয়া করে ব্যাংকিং সময়ের মধ্যে পেমেন্টটি নিশ্চিত করার ব্যবস্থা গ্রহণ করবেন। ধন্যবাদ।`;
       }
-      return `প্রিয় ভাই (${d.partyName}), শুভেচ্ছা জানবেন। আমাদের কারখানার শেষ অর্ডারের বাকি বিল ${d.amount.toLocaleString()} ${profile.currency}-এর বিষয়ে একটু তাগাদা দিতে মেসেজ করলাম। আমাদের আগামী সপ্তাহে নতুন ফেব্রিক অর্ডার করতে হবে, তাই বিলটা ক্লিয়ার করে দিলে খুব উপকৃত হতাম। ভালো থাকবেন!`;
+      return `প্রিয় ভাই (${d.partyName}), শুভেচ্ছা জানবেন। আমাদের কারখানার শেষ অর্ডারের বাকি বিল ${formattedAmt} ${activeCurrency}-এর বিষয়ে একটু তাগাদা দিতে মেসেজ করলাম। আমাদের আগামী সপ্তাহে নতুন ফেব্রিক অর্ডার করতে হবে, তাই বিলটা ক্লিয়ার করে দিলে খুব উপকৃত হতাম। ভালো থাকবেন!`;
     }
 
     // Default: English
     if (tone === 'urgent') {
-      return `URGENT COLLECTION NOTICE: Dear (${d.partyName}), regarding order deliveries from ${profile.businessName}, an outstanding balance of ${d.amount.toLocaleString()} ${profile.currency} is past due (Due Date: ${d.dueDate}). To meet upcoming payroll and supplier obligations, kindly remit payment within 48 hours. Best regards, ${profile.businessName}.`;
+      return `URGENT COLLECTION NOTICE: Dear (${d.partyName}), regarding order deliveries from ${profile.businessName}, an outstanding balance of ${formattedAmt} ${activeCurrency} is past due (Due Date: ${d.dueDate}). To meet upcoming payroll and supplier obligations, kindly remit payment within 48 hours. Best regards, ${profile.businessName}.`;
     }
     if (tone === 'formal') {
-      return `Dear (${d.partyName}), Greetings from the finance department of ${profile.businessName}. This is a formal statement regarding your outstanding balance of ${d.amount.toLocaleString()} ${profile.currency} (Due Date: ${d.dueDate}). Kindly process payment during banking hours. Thank you.`;
+      return `Dear (${d.partyName}), Greetings from the finance department of ${profile.businessName}. This is a formal statement regarding your outstanding balance of ${formattedAmt} ${activeCurrency} (Due Date: ${d.dueDate}). Kindly process payment during banking hours. Thank you.`;
     }
-    return `Hello (${d.partyName}), hope you are well! Just a friendly reminder regarding the pending balance of ${d.amount.toLocaleString()} ${profile.currency} for the recent delivery from ${profile.businessName}. We are restocking raw materials next week and would appreciate settling this invoice. Thank you!`;
+    return `Hello (${d.partyName}), hope you are well! Just a friendly reminder regarding the pending balance of ${formattedAmt} ${activeCurrency} for the recent delivery from ${profile.businessName}. We are restocking raw materials next week and would appreciate settling this invoice. Thank you!`;
   };
 
   const handleCopyMessage = (text: string) => {
@@ -107,16 +115,20 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
     }
     if (!partyName || !amount) return;
 
+    // Convert input amount to BDT base for consistent Excel storage
+    const enteredAmount = Number(amount);
+    const amountInBDT = convertCurrency(enteredAmount, activeCurrency, 'BDT');
+
     await onAddDebtor({
       partyName,
       contactNumber: phone || '+8801700000000',
       type: 'receivable',
-      amount: Number(amount),
-      originalAmount: Number(amount),
+      amount: amountInBDT,
+      originalAmount: amountInBDT,
       issueDate: new Date().toISOString().split('T')[0],
       dueDate: dueDate || new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
-      status: Number(amount) >= threshold ? 'overdue' : 'pending',
-      alertThreshold: threshold,
+      status: amountInBDT >= 30000 ? 'overdue' : 'pending',
+      alertThreshold: 30000,
       notes: notes || 'Client invoice ledger',
     });
 
@@ -167,7 +179,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-sm text-slate-900">{d.partyName}</span>
                     <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold">
-                      {d.amount.toLocaleString()} {profile.currency}
+                      {conv(d.amount).toLocaleString()} {activeCurrency}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
@@ -218,7 +230,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
               <tr>
                 <th className="px-3 py-2.5">{t('debtorNameTh')}</th>
                 <th className="px-3 py-2.5">{t('contactTh')}</th>
-                <th className="px-3 py-2.5 text-right">{t('amountDueTh')} ({profile.currency})</th>
+                <th className="px-3 py-2.5 text-right">{t('amountDueTh')} ({activeCurrency})</th>
                 <th className="px-3 py-2.5">{t('dueDateTh')}</th>
                 <th className="px-3 py-2.5">{t('statusTh')}</th>
                 <th className="px-3 py-2.5 text-right">{t('actionsTh')}</th>
@@ -226,7 +238,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {receivables.map((d) => {
-                const isOver = d.amount >= (d.alertThreshold || threshold);
+                const isOver = d.amount >= (d.alertThreshold || 30000);
                 return (
                   <tr key={d.id} className="hover:bg-slate-50 transition">
                     <td className="px-3 py-2.5 font-bold text-slate-900">{d.partyName}</td>
@@ -236,7 +248,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
                         isOver ? 'text-rose-600' : 'text-slate-900'
                       }`}
                     >
-                      {d.amount.toLocaleString()}
+                      {conv(d.amount).toLocaleString()}
                     </td>
                     <td className="px-3 py-2.5">{d.dueDate}</td>
                     <td className="px-3 py-2.5">
@@ -401,7 +413,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  {t('amountDueTh')} ({profile.currency}) *
+                  {t('amountDueTh')} ({activeCurrency}) *
                 </label>
                 <input
                   type="number"

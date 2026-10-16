@@ -3,6 +3,12 @@ import { AccountingEngine } from './accounting-engine';
 import { SecurityVault } from './security-vault';
 import { TargetProfitPlan, FinancialHealthMetrics } from './types';
 import { SupportedLanguage } from './i18n';
+import {
+  SupportedCurrency,
+  convertCurrency,
+  getOverdueThreshold,
+  getDefaultTargetProfit,
+} from './currency';
 
 export interface AgentResponse {
   answerPrimary: string;
@@ -25,26 +31,41 @@ export class AgentOrchestrator {
   public static async processQuery(
     query: string,
     apiKey?: string,
-    lang: SupportedLanguage = 'en'
+    lang: SupportedLanguage = 'en',
+    currency: SupportedCurrency = 'BDT'
   ): Promise<AgentResponse> {
     const sanitizedQuery = SecurityVault.maskPII(query).toLowerCase().trim();
-    const profile = ExcelDatabase.getProfile();
+    const rawProfile = ExcelDatabase.getProfile();
+    const profile = AccountingEngine.getConvertedProfile(rawProfile, currency);
     const transactions = ExcelDatabase.getTransactions();
     const debtors = ExcelDatabase.getDebtors();
     const loans = ExcelDatabase.getLoans();
-    const health = AccountingEngine.computeFinancialHealth(profile, transactions, debtors, loans);
+    const rawHealth = AccountingEngine.computeFinancialHealth(rawProfile, transactions, debtors, loans);
+
+    const conv = (amt: number) => convertCurrency(amt, 'BDT', currency);
+    const health: FinancialHealthMetrics = {
+      ...rawHealth,
+      totalRevenue: conv(rawHealth.totalRevenue),
+      totalExpenses: conv(rawHealth.totalExpenses),
+      totalFixedCosts: conv(rawHealth.totalFixedCosts),
+      totalVariableCosts: conv(rawHealth.totalVariableCosts),
+      netProfit: conv(rawHealth.netProfit),
+      totalReceivables: conv(rawHealth.totalReceivables),
+      totalPayables: conv(rawHealth.totalPayables),
+      monthlyLoanObligation: conv(rawHealth.monthlyLoanObligation),
+    };
 
     // If Gemini API Key is configured, attempt LLM tool-calling; else use deterministic router
     if (apiKey || process.env.GEMINI_API_KEY) {
       try {
-        return await this.callGeminiWithTools(query, apiKey || process.env.GEMINI_API_KEY!, lang);
+        return await this.callGeminiWithTools(query, apiKey || process.env.GEMINI_API_KEY!, lang, currency);
       } catch (err) {
         console.warn('Gemini API call failed, falling back to deterministic router:', err);
       }
     }
 
     // DETERMINISTIC ZERO-HALLUCINATION ROUTER (Always reliable & instant)
-    return this.deterministicRoute(sanitizedQuery, profile, transactions, debtors, loans, health, lang);
+    return this.deterministicRoute(sanitizedQuery, profile, transactions, debtors, loans, health, lang, currency);
   }
 
   private static convertBengaliDigits(text: string): string {
@@ -66,7 +87,8 @@ export class AgentOrchestrator {
     debtors: any[],
     loans: any[],
     health: FinancialHealthMetrics,
-    lang: SupportedLanguage
+    lang: SupportedLanguage,
+    currency: SupportedCurrency = 'BDT'
   ): AgentResponse {
     const q = this.convertBengaliDigits(qRaw);
 
@@ -87,7 +109,7 @@ export class AgentOrchestrator {
       q.includes('लक्ष्य');
 
     if (isGoalIntent) {
-      let targetAmount = 30000;
+      let targetAmount = Number(getDefaultTargetProfit(currency));
       if (profitMatch && profitMatch[1]) {
         targetAmount = parseInt(profitMatch[1].replace(/,/g, ''), 10);
         if (q.includes('万')) targetAmount *= 10000;
@@ -137,6 +159,8 @@ export class AgentOrchestrator {
       q.includes('পাওনা') ||
       q.includes('debtor') ||
       q.includes('receivable') ||
+      q.includes('owe') ||
+      q.includes('overdue') ||
       q.includes('তাগাদা') ||
       q.includes('应收') ||
       q.includes('欠款') ||
@@ -145,34 +169,65 @@ export class AgentOrchestrator {
       q.includes('उधारी');
 
     if (isDebtorIntent) {
-      const highRisk = debtors.filter((d) => d.type === 'receivable' && d.amount >= (d.alertThreshold || 30000));
-      const totalRec = debtors.filter((d) => d.type === 'receivable').reduce((s, d) => s + d.amount, 0);
+      const riskThreshold = getOverdueThreshold(currency);
+      const conv = (amt: number) => convertCurrency(amt, 'BDT', currency);
+      const convertedDebtors = debtors.map((d) => ({
+        ...d,
+        amount: conv(d.amount),
+        alertThreshold: conv(d.alertThreshold || 30000),
+      }));
+      const highRisk = convertedDebtors.filter(
+        (d) => d.type === 'receivable' && d.amount >= riskThreshold
+      );
+      const totalRec = convertedDebtors
+        .filter((d) => d.type === 'receivable')
+        .reduce((s, d) => s + d.amount, 0);
 
-      const highRiskBn = highRisk.map((d) => `• **${d.partyName}**: বকেয়া ${d.amount.toLocaleString()} ${profile.currency} (মেয়াদ: ${d.dueDate})`).join('\n');
-      const highRiskEn = highRisk.map((d) => `• **${d.partyName}**: ${d.amount.toLocaleString()} ${profile.currency} (Due: ${d.dueDate})`).join('\n');
-      const highRiskZh = highRisk.map((d) => `• **${d.partyName}**: 欠款 ${d.amount.toLocaleString()} ${profile.currency}（到期日: ${d.dueDate}）`).join('\n');
-      const highRiskHi = highRisk.map((d) => `• **${d.partyName}**: बकाया ${d.amount.toLocaleString()} ${profile.currency} (देय: ${d.dueDate})`).join('\n');
+      const highRiskBn = highRisk
+        .map(
+          (d) =>
+            `• **${d.partyName}**: বকেয়া ${d.amount.toLocaleString()} ${profile.currency} (মেয়াদ: ${d.dueDate})`
+        )
+        .join('\n');
+      const highRiskEn = highRisk
+        .map(
+          (d) =>
+            `• **${d.partyName}**: ${d.amount.toLocaleString()} ${profile.currency} (Due: ${d.dueDate})`
+        )
+        .join('\n');
+      const highRiskZh = highRisk
+        .map(
+          (d) =>
+            `• **${d.partyName}**: 欠款 ${d.amount.toLocaleString()} ${profile.currency}（到期日: ${d.dueDate}）`
+        )
+        .join('\n');
+      const highRiskHi = highRisk
+        .map(
+          (d) =>
+            `• **${d.partyName}**: बकाया ${d.amount.toLocaleString()} ${profile.currency} (देय: ${d.dueDate})`
+        )
+        .join('\n');
 
       const ansBn = `বর্তমানে আপনার মোট বকেয়া (Receivables) **${totalRec.toLocaleString()} ${profile.currency}**। 
-এর মধ্যে **${highRisk.length}টি পার্টির** বকেয়া ৩০,০০০ টাকার সীমা ছাড়িয়ে গেছে:
+এর মধ্যে **${highRisk.length}টি পার্টির** বকেয়া ${riskThreshold.toLocaleString()} ${profile.currency} এর সীমা ছাড়িয়ে গেছে:
 ${highRiskBn}
 
 জরুরি ভিত্তিতে তাদের কাছে তাগাদা মেসেজ পাঠানোর প্রস্তাব করা হচ্ছে।`;
 
       const ansEn = `You have total outstanding receivables of **${totalRec.toLocaleString()} ${profile.currency}**.
-There are **${highRisk.length} account(s)** exceeding the 30,000 ${profile.currency} risk threshold:
+There are **${highRisk.length} account(s)** exceeding the ${riskThreshold.toLocaleString()} ${profile.currency} risk threshold:
 ${highRiskEn}
 
 Recommended action: Send automated reminder notices to overdue accounts.`;
 
       const ansZh = `当前您的应收账款总额为 **${totalRec.toLocaleString()} ${profile.currency}**。
-其中共有 **${highRisk.length} 家客户** 欠款超出 30,000 元的信用风控红线：
+其中共有 **${highRisk.length} 家客户** 欠款超出 ${riskThreshold.toLocaleString()} ${profile.currency} 的信用风控红线：
 ${highRiskZh}
 
 系统建议：请立即向超期客户发起自动生成的对账催缴通知函。`;
 
       const ansHi = `वर्तमान में आपकी कुल बकाया राशि (Receivables) **${totalRec.toLocaleString()} ${profile.currency}** है।
-इनमें से **${highRisk.length} खातों** का बकाया 30,000 की सीमा पार कर चुका है:
+इनमें से **${highRisk.length} खातों** का बकाया ${riskThreshold.toLocaleString()} ${profile.currency} की सीमा पार कर चुका है:
 ${highRiskHi}
 
 सिफारिश: कृपया तुरंत तगादा संदेश भेजें।`;
@@ -200,8 +255,10 @@ ${highRiskHi}
       (q.includes('ঋণ') || q.includes('loan') || q.includes('লোন') || q.includes('贷款') || q.includes('कर्ज'));
 
     if (isLoanEvaluationIntent) {
+      const conv = (amt: number) => convertCurrency(amt, 'BDT', currency);
+      const defaultLoan = conv(50000);
       const loanAmountMatch = q.match(/(\d+[\d,]*)/);
-      const prospectiveAmount = loanAmountMatch ? parseInt(loanAmountMatch[1].replace(/,/g, ''), 10) : 50000;
+      const prospectiveAmount = loanAmountMatch ? parseInt(loanAmountMatch[1].replace(/,/g, ''), 10) : defaultLoan;
       const sim = AccountingEngine.calculateLoanEMI(prospectiveAmount, 8.5, 24);
       const postEmiProfit = health.netProfit - sim.monthlyEMI;
 
@@ -271,7 +328,7 @@ ${highRiskHi}
       q.includes('ऋण विकल्प');
 
     if (isFinancingMatchIntent) {
-      const options = AccountingEngine.matchFinancingOptions(profile, health, debtors);
+      const options = AccountingEngine.matchFinancingOptions(profile, health, debtors, lang, currency);
       const top3 = options.slice(0, 3);
 
       const topBn = top3
@@ -346,7 +403,7 @@ ${highRiskHi}
       q.includes('किस्त');
 
     if (isLoanIntent) {
-      const loanSummary = AccountingEngine.reconcileAllLoans(loans);
+      const loanSummary = AccountingEngine.reconcileAllLoans(loans, currency);
 
       const loanDetailsBn = loanSummary.nextDueDetails.map(
         (l) => `• **${l.lender}**: অবশিষ্ট ঋণ ${l.remaining.toLocaleString()} ${profile.currency} (মাসিক কিস্তি: ${l.emi.toLocaleString()} ${profile.currency}, পরবর্তী কিস্তির তারিখ: ${l.nextDate})`
@@ -454,16 +511,31 @@ ${loanDetailsHi}
   private static async callGeminiWithTools(
     query: string,
     apiKey: string,
-    lang: SupportedLanguage
+    lang: SupportedLanguage,
+    currency: SupportedCurrency = 'BDT'
   ): Promise<AgentResponse> {
     const { GoogleGenAI } = await import('@google/genai');
     const ai = new GoogleGenAI({ apiKey });
 
-    const profile = ExcelDatabase.getProfile();
+    const rawProfile = ExcelDatabase.getProfile();
+    const profile = AccountingEngine.getConvertedProfile(rawProfile, currency);
     const transactions = ExcelDatabase.getTransactions();
     const debtors = ExcelDatabase.getDebtors();
     const loans = ExcelDatabase.getLoans();
-    const health = AccountingEngine.computeFinancialHealth(profile, transactions, debtors, loans);
+    const rawHealth = AccountingEngine.computeFinancialHealth(rawProfile, transactions, debtors, loans);
+
+    const conv = (amt: number) => convertCurrency(amt, 'BDT', currency);
+    const health: FinancialHealthMetrics = {
+      ...rawHealth,
+      totalRevenue: conv(rawHealth.totalRevenue),
+      totalExpenses: conv(rawHealth.totalExpenses),
+      totalFixedCosts: conv(rawHealth.totalFixedCosts),
+      totalVariableCosts: conv(rawHealth.totalVariableCosts),
+      netProfit: conv(rawHealth.netProfit),
+      totalReceivables: conv(rawHealth.totalReceivables),
+      totalPayables: conv(rawHealth.totalPayables),
+      monthlyLoanObligation: conv(rawHealth.monthlyLoanObligation),
+    };
 
     const langName = lang === 'zh' ? 'Simplified Chinese' : lang === 'bn' ? 'Bengali' : lang === 'hi' ? 'Hindi' : 'English';
 
@@ -478,7 +550,7 @@ Current Health:
 - Total Expenses: ${health.totalExpenses} ${profile.currency}
 - Net Profit: ${health.netProfit} ${profile.currency}
 - Fixed Costs: ${health.totalFixedCosts} ${profile.currency}
-- Overdue Receivables (>30k): ${health.highRiskReceivablesCount} accounts
+- Overdue Receivables (>threshold): ${health.highRiskReceivablesCount} accounts
 - Active Debt: ${health.monthlyLoanObligation} monthly EMI
 `;
 

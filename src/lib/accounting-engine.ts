@@ -10,6 +10,7 @@ import {
   ProductProfitabilityItem,
 } from './types';
 import { SupportedLanguage } from './i18n';
+import { SupportedCurrency, convertCurrency, getOverdueThreshold } from './currency';
 
 /**
  * DETERMINISTIC ACCOUNTING ENGINE
@@ -21,6 +22,30 @@ import { SupportedLanguage } from './i18n';
  */
 
 export class AccountingEngine {
+  /**
+   * Returns a copy of the business profile converted to the specified target currency
+   */
+  public static getConvertedProfile(
+    profile: BusinessProfile,
+    targetCurrency: SupportedCurrency = 'BDT'
+  ): BusinessProfile {
+    if (!profile) return profile;
+    if (targetCurrency === 'BDT') return { ...profile, currency: 'BDT' };
+    return {
+      ...profile,
+      initialInvestment: convertCurrency(profile.initialInvestment, 'BDT', targetCurrency),
+      workerSalariesMonthly: convertCurrency(profile.workerSalariesMonthly, 'BDT', targetCurrency),
+      electricityBillMonthly: convertCurrency(profile.electricityBillMonthly, 'BDT', targetCurrency),
+      rentMonthly: convertCurrency(profile.rentMonthly, 'BDT', targetCurrency),
+      maintenanceMonthly: convertCurrency(profile.maintenanceMonthly, 'BDT', targetCurrency),
+      otherFixedCostsMonthly: convertCurrency(profile.otherFixedCostsMonthly, 'BDT', targetCurrency),
+      unitSellingPrice: convertCurrency(profile.unitSellingPrice, 'BDT', targetCurrency),
+      unitVariableCost: convertCurrency(profile.unitVariableCost, 'BDT', targetCurrency),
+      fabricCostPerMeter: convertCurrency(profile.fabricCostPerMeter, 'BDT', targetCurrency),
+      currency: targetCurrency,
+    };
+  }
+
   /**
    * Sums all recurring monthly fixed costs:
    * Fixed Costs = Worker Salaries + Rent + Electricity + Maintenance + Other Overheads
@@ -183,20 +208,24 @@ export class AccountingEngine {
   /**
    * Reconciles multiple active loans and evaluates monthly debt burden:
    */
-  public static reconcileAllLoans(loans: LoanLiability[]): {
+  public static reconcileAllLoans(
+    loans: LoanLiability[],
+    currency: SupportedCurrency = 'BDT'
+  ): {
     totalRemainingDebt: number;
     totalMonthlyEMIObligation: number;
     activeLoanCount: number;
     nextDueDetails: Array<{ lender: string; emi: number; remaining: number; nextDate: string }>;
   } {
+    const conv = (amt: number) => convertCurrency(amt, 'BDT', currency);
     const active = loans.filter((l) => l.status === 'active');
-    const totalRemainingDebt = active.reduce((sum, l) => sum + (l.remainingBalance || 0), 0);
-    const totalMonthlyEMIObligation = active.reduce((sum, l) => sum + (l.monthlyEMI || 0), 0);
+    const totalRemainingDebt = conv(active.reduce((sum, l) => sum + (l.remainingBalance || 0), 0));
+    const totalMonthlyEMIObligation = conv(active.reduce((sum, l) => sum + (l.monthlyEMI || 0), 0));
 
     const nextDueDetails = active.map((l) => ({
       lender: l.lenderName,
-      emi: l.monthlyEMI,
-      remaining: l.remainingBalance,
+      emi: conv(l.monthlyEMI),
+      remaining: conv(l.remainingBalance),
       nextDate: l.nextPaymentDate,
     }));
 
@@ -300,10 +329,13 @@ export class AccountingEngine {
     profile: BusinessProfile,
     health: FinancialHealthMetrics,
     debtors: DebtorRecord[],
-    lang: SupportedLanguage = 'en'
+    lang: SupportedLanguage = 'en',
+    currency: SupportedCurrency = 'BDT'
   ): FinancingOption[] {
+    const activeCurrency = currency || profile.currency || 'BDT';
     const receivables = debtors.filter((d) => d.type === 'receivable');
-    const totalRec = receivables.reduce((sum, d) => sum + d.amount, 0);
+    const totalRec = convertCurrency(receivables.reduce((sum, d) => sum + d.amount, 0), 'BDT', activeCurrency);
+    const rev = convertCurrency(health.totalRevenue, 'BDT', activeCurrency);
 
     const isZh = lang === 'zh';
     const isBn = lang === 'bn';
@@ -327,8 +359,8 @@ export class AccountingEngine {
           ? 'वीबैंक डिजिटल माइक्रोफाइनेंस'
           : 'WeBank Digital SME Micro-finance',
         type: 'working_capital',
-        minAmount: 50000,
-        maxAmount: 500000,
+        minAmount: convertCurrency(50000, 'BDT', activeCurrency),
+        maxAmount: convertCurrency(500000, 'BDT', activeCurrency),
         interestRateText: isZh
           ? '7.8% - 9.2% 年化 (单利)'
           : isBn
@@ -342,12 +374,12 @@ export class AccountingEngine {
         fitScorePercentage: health.netProfit > 0 ? 94 : 76,
         eligibilityStatus: health.netProfit > 0 ? 'eligible' : 'conditional',
         explainableMatchReason: isZh
-          ? `基于工厂月度营业额（${health.totalRevenue.toLocaleString()} ${profile.currency}）与健康现金流表现，此智能信贷产品可为日常采购与运营提供综合成本最优的资金支持。`
+          ? `基于工厂月度营业额（${rev.toLocaleString()} ${activeCurrency}）与健康现金流表现，此智能信贷产品可为日常采购与运营提供综合成本最优的资金支持。`
           : isBn
-          ? `আপনার মাসিক রেভিনিউ (${health.totalRevenue.toLocaleString()} ${profile.currency}) এবং পজিটিভ ক্যাশ রানওয়ে বিবেচনায় এই লোনটি কারখানার কাঁচামাল ও পরিচালন ব্যয়ের জন্য সবচেয়ে সাশ্রয়ী।`
+          ? `আপনার মাসিক রেভিনিউ (${rev.toLocaleString()} ${activeCurrency}) এবং পজিটিভ ক্যাশ রানওয়ে বিবেচনায় এই লোনটি কারখানার কাঁচামাল ও পরিচালন ব্যয়ের জন্য সবচেয়ে সাশ্রয়ী।`
           : isHi
-          ? `आपके मासिक राजस्व (${health.totalRevenue.toLocaleString()} ${profile.currency}) और सकारात्मक नकदी प्रवाह के आधार पर यह ऋण कच्चे माल और संचालन के लिए सबसे किफायती है।`
-          : `Based on your monthly revenue (${health.totalRevenue.toLocaleString()} ${profile.currency}) and stable cash runway, this digital credit line offers the lowest financing cost for raw materials and operating expenses.`,
+          ? `आपके मासिक राजस्व (${rev.toLocaleString()} ${activeCurrency}) और सकारात्मक नकदी प्रवाह के आधार पर यह ऋण कच्चे माल और संचालन के लिए सबसे किफायती है।`
+          : `Based on your monthly revenue (${rev.toLocaleString()} ${activeCurrency}) and stable cash runway, this digital credit line offers the lowest financing cost for raw materials and operating expenses.`,
         hiddenFees: isZh
           ? '零申请手续费，提前还款享受 0.5% 贴息返还。'
           : isBn
@@ -367,8 +399,8 @@ export class AccountingEngine {
           : 'Fast-Track Invoice Factoring & Discounting',
         provider: 'FinTech Factoring Sandbox Partner',
         type: 'invoice_factoring',
-        minAmount: 20000,
-        maxAmount: Math.max(50000, Math.round(totalRec * 0.9)),
+        minAmount: convertCurrency(20000, 'BDT', activeCurrency),
+        maxAmount: Math.max(convertCurrency(50000, 'BDT', activeCurrency), Math.round(totalRec * 0.9)),
         interestRateText: isZh
           ? '1.5% - 2.0% 每30天账期周期'
           : isBn
@@ -379,15 +411,15 @@ export class AccountingEngine {
         tenureMonths: 2,
         processingTime: isZh ? '发票验真后24小时放款' : isBn ? '২৪ ঘণ্টার মধ্যে দ্রুত রিলিজ' : isHi ? 'सत्यापन के 24 घंटे बाद' : '24 Hours upon invoice verification',
         collateralRequired: false,
-        fitScorePercentage: totalRec >= 30000 ? 96 : 65,
-        eligibilityStatus: totalRec >= 30000 ? 'eligible' : 'conditional',
+        fitScorePercentage: totalRec >= convertCurrency(30000, 'BDT', activeCurrency) ? 96 : 65,
+        eligibilityStatus: totalRec >= convertCurrency(30000, 'BDT', activeCurrency) ? 'eligible' : 'conditional',
         explainableMatchReason: isZh
-          ? `当前账面应收账款达 ${totalRec.toLocaleString()} ${profile.currency}。通过未结发票质押，可在24小时内闪电变现80%-90%现金头寸。`
+          ? `当前账面应收账款达 ${totalRec.toLocaleString()} ${activeCurrency}。通过未结发票质押，可在24小时内闪电变现80%-90%现金头寸。`
           : isBn
-          ? `আপনার বাজারে মোট বকেয়া রয়েছে ${totalRec.toLocaleString()} ${profile.currency}। আনপেইড ইনভয়েসের বিপরীতে ৮০-৯০% নগদ টাকা সাথে সাথে অ্যাডভান্স তোলার জন্য এটি সর্বোত্তম।`
+          ? `আপনার বাজারে মোট বকেয়া রয়েছে ${totalRec.toLocaleString()} ${activeCurrency}। আনপেইড ইনভয়েসের বিপরীতে ৮০-৯০% নগদ টাকা সাথে সাথে অ্যাডভান্স তোলার জন্য এটি সর্বোত্তম।`
           : isHi
-          ? `बाजार में आपका कुल बकाया ${totalRec.toLocaleString()} ${profile.currency} है। यह बकाया चालानों पर तुरंत 80-90% नकद अग्रिम प्राप्त करने के लिए सर्वोत्तम है।`
-          : `You have ${totalRec.toLocaleString()} ${profile.currency} in outstanding receivables. This scheme allows you to instantly unlock 80-90% cash advance against unpaid invoices.`,
+          ? `बाजार में आपका कुल बकाया ${totalRec.toLocaleString()} ${activeCurrency} है। यह बकाया चालानों पर तुरंत 80-90% नकद अग्रिम प्राप्त करने के लिए सर्वोत्तम है।`
+          : `You have ${totalRec.toLocaleString()} ${activeCurrency} in outstanding receivables. This scheme allows you to instantly unlock 80-90% cash advance against unpaid invoices.`,
         hiddenFees: isZh ? '免开户审核工本费，服务费在账款回款时直接扣除。' : isBn ? 'কোনো গোপন চার্জ নেই। বিল আদায়ের সময় ফি সমন্বয় করা হয়।' : isHi ? 'कोई दस्तावेजी शुल्क नहीं।' : 'Zero documentation charges. Fee deducted on collection.',
       },
       {
@@ -401,8 +433,8 @@ export class AccountingEngine {
           : 'Machinery & Equipment Expansion Lease',
         provider: 'Industrial SME Leasing Corp',
         type: 'equipment_lease',
-        minAmount: 100000,
-        maxAmount: 1000000,
+        minAmount: convertCurrency(100000, 'BDT', activeCurrency),
+        maxAmount: convertCurrency(1000000, 'BDT', activeCurrency),
         interestRateText: isZh ? '8.5% 固定年化' : isBn ? '৮.৫% ফিক্সড APR' : isHi ? '8.5% फिक्स्ड APR' : '8.5% Fixed APR',
         tenureMonths: 24,
         processingTime: isZh ? '3-5个工作日' : isBn ? '৩-৫ কার্যদিবস' : isHi ? '3-5 कार्य दिवस' : '3-5 Business Days',
@@ -429,21 +461,21 @@ export class AccountingEngine {
           : '7-Day Emergency Liquidity Micro-Advance',
         provider: 'Instant SME Liquidity Sandbox',
         type: 'micro_advance',
-        minAmount: 10000,
-        maxAmount: 100000,
-        interestRateText: isZh ? '1.2% - 1.5% 固定利率 (7-14天)' : isBn ? '১.২% - ১.৫% ফ্ল্যাট (৭-১৪ দিন)' : isHi ? '1.2% - 1.5% फ्लैट (7-14 दिन)' : '1.2% - 1.5% flat for 7-14 days',
+        minAmount: convertCurrency(10000, 'BDT', activeCurrency),
+        maxAmount: convertCurrency(100000, 'BDT', activeCurrency),
+        interestRateText: isZh ? '1.2% - 1.5% 固定利率 (7-14天)' : isBn ? '১.২% - ১.৫% ফ্ল্যাট (৭-১৪ দিন)' : isHi ? '1.2% - 1.5% फ्लैट (7-14 দিন)' : '1.2% - 1.5% flat for 7-14 days',
         tenureMonths: 1,
         processingTime: isZh ? '极速放款 (30分钟到账)' : isBn ? 'ইনস্ট্যান্ট অনুমোদন (৩০ মিনিট)' : isHi ? 'तुरंत (30 मिनट)' : 'Instant Disbursal (30 Minutes)',
         collateralRequired: false,
         fitScorePercentage: 91,
         eligibilityStatus: 'eligible',
         explainableMatchReason: isZh
-          ? `超短期应急过桥资金，专用于发薪日或突发供应商小额结账（如 500 - 3,000 ${profile.currency}）前的资金无缝周转。`
+          ? `超短期应急过桥资金，专用于发薪日或突发供应商小额结账（如 ${convertCurrency(500, 'BDT', activeCurrency).toLocaleString()} - ${convertCurrency(3000, 'BDT', activeCurrency).toLocaleString()} ${activeCurrency}）前的资金无缝周转。`
           : isBn
-          ? `সাপ্লায়ার বিল বা শ্রমিকের বেতনের পূর্বে সাময়িক ৫০০-১,০০০ টাকার মতো আকস্মিক ঘাটতি মেটাতে তাৎক্ষণিক ক্যাশ ব্রিজ।`
+          ? `সাপ্লায়ার বিল বা শ্রমিকের বেতনের পূর্বে সাময়িক ঘাটতি (${convertCurrency(500, 'BDT', activeCurrency).toLocaleString()} - ${convertCurrency(3000, 'BDT', activeCurrency).toLocaleString()} ${activeCurrency}) মেটাতে তাৎক্ষণিক ক্যাশ ব্রিজ।`
           : isHi
-          ? `सप्लाई बिल या वेतन से पहले क्षणिक नकदी संकट को दूर करने के लिए तत्काल तरलता ब्रिज।`
-          : `Instant liquidity bridge designed to cover transient supplier dues or payroll dips (e.g. 500 - 3,000 ${profile.currency}) before customer receivables arrive.`,
+          ? `सप्लाई बिल या वेतन से पहले क्षणिक नकदी संकट (${convertCurrency(500, 'BDT', activeCurrency).toLocaleString()} - ${convertCurrency(3000, 'BDT', activeCurrency).toLocaleString()} ${activeCurrency}) को दूर करने के लिए तत्काल तरलता ब्रिज।`
+          : `Instant liquidity bridge designed to cover transient supplier dues or payroll dips (e.g. ${convertCurrency(500, 'BDT', activeCurrency).toLocaleString()} - ${convertCurrency(3000, 'BDT', activeCurrency).toLocaleString()} ${activeCurrency}) before customer receivables arrive.`,
         hiddenFees: isZh ? '按期结清免收任何展期费与罚息。' : isBn ? 'নির্ধারিত মেয়াদের মধ্যে দিলে কোনো অতিরিক্ত চার্জ নেই।' : isHi ? 'समय पर भुगतान पर कोई अतिरिक्त शुल्क नहीं।' : 'No rollover fee if paid within grace period.',
       },
     ];
@@ -457,9 +489,11 @@ export class AccountingEngine {
     health: FinancialHealthMetrics,
     transactions: Transaction[],
     debtors: DebtorRecord[],
-    lang: SupportedLanguage = 'en'
+    lang: SupportedLanguage = 'en',
+    currency: SupportedCurrency = 'BDT'
   ): AnomalyAlert[] {
     const alerts: AnomalyAlert[] = [];
+    const activeCurrency = currency || profile.currency || 'BDT';
     const isZh = lang === 'zh';
     const isBn = lang === 'bn';
     const isHi = lang === 'hi';
@@ -468,6 +502,11 @@ export class AccountingEngine {
     const upcomingPayable = debtors.find((d) => d.type === 'payable' && d.status !== 'settled');
     const overdueReceivable = debtors.find((d) => d.type === 'receivable' && d.status === 'overdue');
     if (upcomingPayable) {
+      const payableAmt = convertCurrency(upcomingPayable.amount, 'BDT', activeCurrency);
+      const overdueAmt = overdueReceivable
+        ? convertCurrency(overdueReceivable.amount, 'BDT', activeCurrency)
+        : 0;
+
       alerts.push({
         id: 'ANOM-01',
         type: 'liquidity_shortage',
@@ -480,26 +519,26 @@ export class AccountingEngine {
           ? 'आगामी आपूर्तिकर्ता भुगतान के बाद खाते में कमी का जोखिम'
           : 'Account Shortage Risk after Upcoming Supplier Payment',
         description: isZh
-          ? `下周须向供应商（${upcomingPayable.partyName}）支付 ${upcomingPayable.amount.toLocaleString()} ${profile.currency}。按现有现金流测算，账户存在流动性缺口风险。`
+          ? `下周须向供应商（${upcomingPayable.partyName}）支付 ${payableAmt.toLocaleString()} ${activeCurrency}。按现有现金流测算，账户存在流动性缺口风险。`
           : isBn
-          ? `আগামী সপ্তাহে সাপ্লায়ার (${upcomingPayable.partyName}) কে ${upcomingPayable.amount.toLocaleString()} ${profile.currency} পরিশোধ করতে হবে। কিন্তু বর্তমান ক্যাশ-ফ্লো ট্রেন্ড অনুযায়ী অ্যাকাউন্টে ঘাটতি হওয়ার ঝুঁকি রয়েছে।`
+          ? `আগামী সপ্তাহে সাপ্লায়ার (${upcomingPayable.partyName}) কে ${payableAmt.toLocaleString()} ${activeCurrency} পরিশোধ করতে হবে। কিন্তু বর্তমান ক্যাশ-ফ্লো ট্রেন্ড অনুযায়ী অ্যাকাউন্টে ঘাটতি হওয়ার ঝুঁকি রয়েছে।`
           : isHi
-          ? `अगले सप्ताह आपूर्तिकर्ता (${upcomingPayable.partyName}) को ${upcomingPayable.amount.toLocaleString()} ${profile.currency} का भुगतान करना होगा। नकदी प्रवाह के अनुसार घाटे का जोखिम है।`
-          : `Payment of ${upcomingPayable.amount.toLocaleString()} ${profile.currency} is due next week to supplier (${upcomingPayable.partyName}). Current cash flow trajectory indicates a projected liquidity shortfall.`,
+          ? `अगले सप्ताह आपूर्तिकर्ता (${upcomingPayable.partyName}) को ${payableAmt.toLocaleString()} ${activeCurrency} का भुगतान करना होगा। नकदी प्रवाह के अनुसार घाटे का जोखिम है।`
+          : `Payment of ${payableAmt.toLocaleString()} ${activeCurrency} is due next week to supplier (${upcomingPayable.partyName}). Current cash flow trajectory indicates a projected liquidity shortfall.`,
         recommendedAction: isZh
           ? overdueReceivable
-            ? `客户 '${overdueReceivable.partyName}' 尚有 ${overdueReceivable.amount.toLocaleString()} ${profile.currency} 超期欠款，系统今日已发起催款函；亦可启用 1.5% 利息的7天微众应急微贷。`
+            ? `客户 '${overdueReceivable.partyName}' 尚有 ${overdueAmt.toLocaleString()} ${activeCurrency} 超期欠款，系统今日已发起催款函；亦可启用 1.5% 利息的7天微众应急微贷。`
             : `建议启用 1.5% 利息的 7 天微众应急微贷或发票保理贴现，以平滑短期流动性。`
           : isBn
           ? overdueReceivable
-            ? `আপনার কাস্টমার '${overdueReceivable.partyName}'-এর কাছে ${overdueReceivable.amount.toLocaleString()} ${profile.currency} বকেয়া আছে, আজই তাকে রিমাইন্ডার পাঠানো হয়েছে। বিকল্প হিসেবে ১.৫% সুদে ৭-দিনের মাইক্রো-লোন সক্রিয় করুন।`
+            ? `আপনার কাস্টমার '${overdueReceivable.partyName}'-এর কাছে ${overdueAmt.toLocaleString()} ${activeCurrency} বকেয়া আছে, আজই তাকে রিমাইন্ডার পাঠানো হয়েছে। বিকল্প হিসেবে ১.৫% সুদে ৭-দিনের মাইক্রো-লোন সক্রিয় করুন।`
             : `চলতি মূলধন সুরক্ষায় ১.৫% সুদে ৭-দিনের জরুরি মাইক্রো-লোন অথবা ইনভয়েস ডিসকাউন্টিং সক্রিয় করার পরামর্শ দেওয়া হচ্ছে।`
           : isHi
           ? overdueReceivable
-            ? `ग्राहक '${overdueReceivable.partyName}' पर ${overdueReceivable.amount.toLocaleString()} ${profile.currency} बकाया है, तगादा भेजा गया है। वैकल्पिक रूप से 1.5% पर 7-दिवसीय सूक्ष्म ऋण लें।`
+            ? `ग्राहक '${overdueReceivable.partyName}' पर ${overdueAmt.toLocaleString()} ${activeCurrency} बकाया है, तगादा भेजा गया है। वैकल्पिक रूप से 1.5% पर 7-दिवसीय सूक्ष्म ऋण लें।`
             : `कार्यशील पूंजी की सुरक्षा के लिए 1.5% पर 7-दिवसीय सूक्ष्म ऋण या चालान छूट सक्रिय करें।`
           : overdueReceivable
-          ? `Client '${overdueReceivable.partyName}' has an overdue balance of ${overdueReceivable.amount.toLocaleString()} ${profile.currency}. An automated collection reminder was dispatched today. Alternatively, activate a 7-day micro-advance at 1.5% interest.`
+          ? `Client '${overdueReceivable.partyName}' has an overdue balance of ${overdueAmt.toLocaleString()} ${activeCurrency}. An automated collection reminder was dispatched today. Alternatively, activate a 7-day micro-advance at 1.5% interest.`
           : `To protect working capital, consider activating a 7-day liquidity micro-advance at 1.5% APR or fast-track invoice discounting.`,
         projectedDate: upcomingPayable.dueDate || (isZh ? '下周' : isBn ? 'আগামী ১৫ তারিখ' : isHi ? 'अगले 15 दिन' : 'Next Week'),
       });
@@ -507,9 +546,12 @@ export class AccountingEngine {
 
     // Alert 2: Utility Bill / Expense Spike Anomaly (+35% spike alert)
     const utilityTx = transactions.find((t) => t.category === 'utility');
-    const baselineUtility = profile.electricityBillMonthly || 18000;
-    const currentUtility = utilityTx ? utilityTx.amount : baselineUtility * 1.35;
-    const spikePct = Math.round(((currentUtility - baselineUtility) / baselineUtility) * 100);
+    const baselineUtilityBDT = profile.electricityBillMonthly || 18000;
+    const currentUtilityBDT = utilityTx ? utilityTx.amount : baselineUtilityBDT * 1.35;
+    const spikePct = Math.round(((currentUtilityBDT - baselineUtilityBDT) / baselineUtilityBDT) * 100);
+
+    const baselineUtility = convertCurrency(baselineUtilityBDT, 'BDT', activeCurrency);
+    const currentUtility = convertCurrency(currentUtilityBDT, 'BDT', activeCurrency);
 
     alerts.push({
       id: 'ANOM-02',
@@ -523,12 +565,12 @@ export class AccountingEngine {
         ? 'पिछले महीने की तुलना में इस महीने उपयोगिता खर्च में 35% की वृद्धि'
         : 'Utility & Electricity Cost Increased by 35% Compared to Last Month',
       description: isZh
-        ? `本月电力与公用开支（${currentUtility.toLocaleString()} ${profile.currency}）较日常基准均值（${baselineUtility.toLocaleString()} ${profile.currency}）超出约 ${Math.max(35, spikePct)}%。`
+        ? `本月电力与公用开支（${currentUtility.toLocaleString()} ${activeCurrency}）较日常基准均值（${baselineUtility.toLocaleString()} ${activeCurrency}）超出约 ${Math.max(35, spikePct)}%。`
         : isBn
-        ? `চলতি মাসে বিদ্যুৎ ও ইউটিলিটি খরচ (${currentUtility.toLocaleString()} ${profile.currency}) বিগত স্বাভাবিক গড় (${baselineUtility.toLocaleString()} ${profile.currency}) এর তুলনায় প্রায় ${Math.max(35, spikePct)}% বেশি রেকর্ড হয়েছে।`
+        ? `চলতি মাসে বিদ্যুৎ ও ইউটিলিটি খরচ (${currentUtility.toLocaleString()} ${activeCurrency}) বিগত স্বাভাবিক গড় (${baselineUtility.toLocaleString()} ${activeCurrency}) এর তুলনায় প্রায় ${Math.max(35, spikePct)}% বেশি রেকর্ড হয়েছে।`
         : isHi
-        ? `इस महीने का बिजली खर्च (${currentUtility.toLocaleString()} ${profile.currency}) सामान्य औसत (${baselineUtility.toLocaleString()} ${profile.currency}) से लगभग ${Math.max(35, spikePct)}% अधिक दर्ज हुआ है।`
-        : `This month's electricity and utility expense (${currentUtility.toLocaleString()} ${profile.currency}) is ~${Math.max(35, spikePct)}% higher than the baseline average (${baselineUtility.toLocaleString()} ${profile.currency}).`,
+        ? `इस महीने का बिजली खर्च (${currentUtility.toLocaleString()} ${activeCurrency}) सामान्य औसत (${baselineUtility.toLocaleString()} ${activeCurrency}) से लगभग ${Math.max(35, spikePct)}% अधिक दर्ज हुआ है।`
+        : `This month's electricity and utility expense (${currentUtility.toLocaleString()} ${activeCurrency}) is ~${Math.max(35, spikePct)}% higher than the baseline average (${baselineUtility.toLocaleString()} ${activeCurrency}).`,
       recommendedAction: isZh
         ? '建议将重型设备与空调运转调整至谷电时段，排查非生产性待机能耗。'
         : isBn
@@ -540,8 +582,15 @@ export class AccountingEngine {
     });
 
     // Alert 3: Overdue Receivables Exceeding Threshold
+    const alertThreshold = getOverdueThreshold(activeCurrency);
     const highRiskDebtors = debtors.filter((d) => d.type === 'receivable' && d.amount >= (d.alertThreshold || 30000));
     if (highRiskDebtors.length > 0) {
+      const totalOverdueSum = convertCurrency(
+        highRiskDebtors.reduce((s, d) => s + d.amount, 0),
+        'BDT',
+        activeCurrency
+      );
+
       alerts.push({
         id: 'ANOM-03',
         type: 'overdue_debtor',
@@ -554,12 +603,12 @@ export class AccountingEngine {
           ? 'अत्यधिक बकाया जोखिम (उच्च बकाया खाते)'
           : 'Critical Receivables Risk (High Outstanding Balances)',
         description: isZh
-          ? `共有 ${highRiskDebtors.length} 家往来客户欠款超出 30,000 元风控警戒线（累计待收总额: ${highRiskDebtors.reduce((s, d) => s + d.amount, 0).toLocaleString()} ${profile.currency}）。`
+          ? `共有 ${highRiskDebtors.length} 家往来客户欠款超出 ${alertThreshold.toLocaleString()} ${activeCurrency} 风控警戒线（累计待收总额: ${totalOverdueSum.toLocaleString()} ${activeCurrency}）。`
           : isBn
-          ? `${highRiskDebtors.length}টি ক্লায়েন্টের কাছে ৩০,০০০ টাকার বেশি বকেয়া আটকে আছে (সর্বমোট: ${highRiskDebtors.reduce((s, d) => s + d.amount, 0).toLocaleString()} ${profile.currency})।`
+          ? `${highRiskDebtors.length}টি ক্লায়েন্টের কাছে ${alertThreshold.toLocaleString()} ${activeCurrency}-এর বেশি বকেয়া আটকে আছে (সর্বমোট: ${totalOverdueSum.toLocaleString()} ${activeCurrency})।`
           : isHi
-          ? `${highRiskDebtors.length} ग्राहकों का बकाया 30,000 की सीमा पार कर गया है (कुल: ${highRiskDebtors.reduce((s, d) => s + d.amount, 0).toLocaleString()} ${profile.currency})।`
-          : `${highRiskDebtors.length} client account(s) have overdue receivables exceeding the 30,000 threshold (Total: ${highRiskDebtors.reduce((s, d) => s + d.amount, 0).toLocaleString()} ${profile.currency}).`,
+          ? `${highRiskDebtors.length} ग्राहकों का बकाया ${alertThreshold.toLocaleString()} ${activeCurrency} की सीमा पार कर गया है (कुल: ${totalOverdueSum.toLocaleString()} ${activeCurrency})।`
+          : `${highRiskDebtors.length} client account(s) have overdue receivables exceeding the ${alertThreshold.toLocaleString()} ${activeCurrency} threshold (Total: ${totalOverdueSum.toLocaleString()} ${activeCurrency}).`,
         recommendedAction: isZh
           ? '请立即通过系统生成对账催款函并通过微信/短信直接发出。'
           : isBn
@@ -578,59 +627,66 @@ export class AccountingEngine {
    * Product Profitability & Unit Economics Matrix (পণ্যভিত্তিক লাভ-লোকসান বিশ্লেষণ)
    * Evaluates which products/services are profitable vs loss-making
    */
-  public static getProductProfitabilityMatrix(profile: BusinessProfile, lang: SupportedLanguage = 'en'): ProductProfitabilityItem[] {
+  public static getProductProfitabilityMatrix(
+    profile: BusinessProfile,
+    lang: SupportedLanguage = 'en',
+    currency: SupportedCurrency = 'BDT'
+  ): ProductProfitabilityItem[] {
     const isCafe = profile.industry.toLowerCase().includes('coffee') || profile.industry.toLowerCase().includes('café') || profile.industry.toLowerCase().includes('bakery');
     const isZh = lang === 'zh';
     const isBn = lang === 'bn';
     const isHi = lang === 'hi';
+    const activeCurrency = currency || profile.currency || 'BDT';
+
+    const conv = (amt: number) => convertCurrency(amt, 'BDT', activeCurrency);
 
     if (isCafe) {
       return [
         {
           id: 'PRD-C01',
           productName: isZh ? '招牌冷萃与特调拿铁咖啡' : isBn ? 'সিগনেচার কোল্ড ব্রিউ ও স্পেশালিটি ল্যাটে' : isHi ? 'सिग्नेचर कोल्ड ब्रू एवं लट्टे' : 'Signature Cold Brew & Specialty Latte',
-          unitSellingPrice: 320,
-          unitVariableCost: 90,
-          contributionMargin: 230,
+          unitSellingPrice: conv(320),
+          unitVariableCost: conv(90),
+          contributionMargin: conv(230),
           marginPercentage: 71.9,
           monthlyVolumeEstimate: 600,
-          totalMonthlyMarginContribution: 138000,
+          totalMonthlyMarginContribution: conv(138000),
           status: 'high_profit',
           recommendation: isZh ? '主力最高毛利明星单品。建议在社媒与下午茶套餐中重点推广。' : isBn ? 'সর্বাধিক লাভজনক সিগনেচার পানীয়। সোশ্যাল মিডিয়া ও কম্বো অফারে এটি প্রমোট করুন।' : isHi ? 'सर्वाधिक लाभदायक पेय। प्रचार बढ़ाएं।' : 'Highest margin signature beverage. Promote heavily in social media & combo sets.',
         },
         {
           id: 'PRD-C02',
           productName: isZh ? '大师级意式浓缩与美式咖啡' : isBn ? 'আর্টিসান এস্প্রেসো ও আমেরিকান কফি' : isHi ? 'आर्टिसन एस्प्रेसो एवं अमेरिकानो' : 'Artisan Espresso & Americano',
-          unitSellingPrice: 220,
-          unitVariableCost: 80,
-          contributionMargin: 140,
+          unitSellingPrice: conv(220),
+          unitVariableCost: conv(80),
+          contributionMargin: conv(140),
           marginPercentage: 63.6,
           monthlyVolumeEstimate: 850,
-          totalMonthlyMarginContribution: 119000,
+          totalMonthlyMarginContribution: conv(119000),
           status: 'profitable',
           recommendation: isZh ? '高频稳健核心单品，销售走量健康稳定。' : isBn ? 'স্থিতিশীল মুনাফাজনক মূল ক্যাফে মেন্যু আইটেম। বিক্রয় ভলিউম সন্তোষজনক।' : isHi ? 'स्थिर लाभदायक मुख्य मेनू आइटम।' : 'Stable profitable core item with consistent sales volume.',
         },
         {
           id: 'PRD-C03',
           productName: isZh ? '法式手工黄油牛角包与烘焙西点' : isBn ? 'ফ্রেশ বাটার ক্রসেন্ট ও পেস্ট্রি' : isHi ? 'फ्रेश बटर क्रोइसैन्ट एवं पेस्ट्री' : 'Fresh Butter Croissant & Pastry',
-          unitSellingPrice: 260,
-          unitVariableCost: 200,
-          contributionMargin: 60,
+          unitSellingPrice: conv(260),
+          unitVariableCost: conv(200),
+          contributionMargin: conv(60),
           marginPercentage: 23.1,
           monthlyVolumeEstimate: 350,
-          totalMonthlyMarginContribution: 21000,
+          totalMonthlyMarginContribution: conv(21000),
           status: 'thin_margin',
           recommendation: isZh ? '受近期乳制品原料涨价影响毛利偏低，建议适当微调单价 10%-15%。' : isBn ? 'মাখন ও ডিমের দাম বাড়ায় মার্জিন সংকুচিত। মূল্য ১০-১৫% বৃদ্ধির পরামর্শ।' : isHi ? 'लागत बढ़ने से मार्जिन कम। 10-15% मूल्य वृद्धि का सुझाव।' : 'Butter/dairy inflation squeezed margins. Consider 10-15% price adjustment.',
         },
         {
           id: 'PRD-C04',
           productName: isZh ? '特惠促销散装烘焙咖啡豆 (250g)' : isBn ? 'প্রমোশনাল কফি বিন প্যাক (২৫০ গ্রাম)' : isHi ? 'प्रमोशनल कॉफी बीन्स पैक (250g)' : 'Promotional Wholesale Coffee Beans (250g)',
-          unitSellingPrice: 550,
-          unitVariableCost: 590,
-          contributionMargin: -40,
+          unitSellingPrice: conv(550),
+          unitVariableCost: conv(590),
+          contributionMargin: conv(-40),
           marginPercentage: -7.3,
           monthlyVolumeEstimate: 120,
-          totalMonthlyMarginContribution: -4800,
+          totalMonthlyMarginContribution: conv(-4800),
           status: 'loss_making',
           recommendation: isZh ? '❌ 处于倒挂亏损！请停止打折促销并重新核算进口与包装成本。' : isBn ? '❌ লোকসানে চলছে! ছাড়ের পরিমাণ কমিয়ে অবিলম্বে প্যাকেজিং ও আমদানি খরচ পর্যালোচনা করুন।' : isHi ? '❌ घाटे में चल रहा है! छूट घटाएं।' : '❌ Loss-making! Reduce discounts and renegotiate bean packaging costs.',
         },
@@ -638,52 +694,56 @@ export class AccountingEngine {
     }
 
     // Default: Garments & Textile Factory
+    const defaultSellingPrice = profile.unitSellingPrice || 520;
+    const defaultVarCost = profile.unitVariableCost || 260;
+    const defaultCM = defaultSellingPrice - defaultVarCost;
+
     return [
       {
         id: 'PRD-G01',
         productName: isZh ? '出口级精梳棉珠地 Polo 衫' : isBn ? 'এক্সপোর্ট কোয়ালিটি পোলো শার্ট (Pique Cotton)' : isHi ? 'एक्सपोर्ट पोलो शर्ट (Pique Cotton)' : 'Export Quality Polo Shirt (100% Pique)',
-        unitSellingPrice: profile.unitSellingPrice || 520,
-        unitVariableCost: profile.unitVariableCost || 260,
-        contributionMargin: (profile.unitSellingPrice || 520) - (profile.unitVariableCost || 260),
+        unitSellingPrice: conv(defaultSellingPrice),
+        unitVariableCost: conv(defaultVarCost),
+        contributionMargin: conv(defaultCM),
         marginPercentage: 50.0,
         monthlyVolumeEstimate: 1200,
-        totalMonthlyMarginContribution: 312000,
+        totalMonthlyMarginContribution: conv(312000),
         status: 'high_profit',
         recommendation: isZh ? '最高毛利核心产品。建议优先为欧美大额出口订单扩充产线。' : isBn ? 'সর্বাধিক লাভজনক পণ্য। বড় রপ্তানি অর্ডারের জন্য উৎপাদন লাইন প্রসারিত করুন।' : isHi ? 'सर्वाधिक लाभदायक उत्पाद। उत्पादन बढ़ाएं।' : 'Highest margin core item. Scale up production lines for bulk export orders.',
       },
       {
         id: 'PRD-G02',
         productName: isZh ? '重磅冬季加绒抓绒连帽卫衣' : isBn ? 'উইন্টার ফ্লিস হুডি (Winter Hoodie)' : isHi ? 'विंटर फ्लीस हुडी' : 'Heavyweight Winter Fleece Hoodie',
-        unitSellingPrice: 1250,
-        unitVariableCost: 750,
-        contributionMargin: 500,
+        unitSellingPrice: conv(1250),
+        unitVariableCost: conv(750),
+        contributionMargin: conv(500),
         marginPercentage: 40.0,
         monthlyVolumeEstimate: 450,
-        totalMonthlyMarginContribution: 225000,
+        totalMonthlyMarginContribution: conv(225000),
         status: 'profitable',
         recommendation: isZh ? '高客单价高利润季节性单品，请提前锁定量产面料现货。' : isBn ? 'উচ্চ মূল্যের লাভজনক শীতকালীন আইটেম। অগ্রিম ফেব্রিক বুকিং নিশ্চিত করুন।' : isHi ? 'उच्च मूल्यवान लाभदायक मौसमी उत्पाद।' : 'High ticket profitable seasonal item. Lock in bulk fabric inventory early.',
       },
       {
         id: 'PRD-G03',
         productName: isZh ? '全棉基础款圆领打底 T 恤' : isBn ? 'বেসিক কটন রাউন্ডনেক টি-শার্ট' : isHi ? 'बेसिक कॉटन टी-शर्ट' : 'Basic Cotton Crewneck T-Shirt',
-        unitSellingPrice: 240,
-        unitVariableCost: 195,
-        contributionMargin: 45,
+        unitSellingPrice: conv(240),
+        unitVariableCost: conv(195),
+        contributionMargin: conv(45),
         marginPercentage: 18.8,
         monthlyVolumeEstimate: 1800,
-        totalMonthlyMarginContribution: 81000,
+        totalMonthlyMarginContribution: conv(81000),
         status: 'thin_margin',
         recommendation: isZh ? '单件利润薄但销售走量大，需利用自动化裁床降低布料裁剪损耗。' : isBn ? 'প্রতি পিসে মার্জিন কম কিন্তু ভলিউম বেশি। অটোমেটেড কাটিং ব্যবহার করে অপচয় কমান।' : isHi ? 'कम मार्जिन लेकिन अधिक बिक्री। बर्बादी रोकें।' : 'Thin unit margin with high volume. Use automated cutting to reduce fabric waste.',
       },
       {
         id: 'PRD-G04',
         productName: isZh ? '尾单促销特价清仓短裤' : isBn ? 'ক্লিয়ারেন্স এক্সপোর্ট শর্টস (Clearance)' : isHi ? 'निकासी निर्यात शॉर्ट्स' : 'Clearance Export Leftover Shorts',
-        unitSellingPrice: 150,
-        unitVariableCost: 168,
-        contributionMargin: -18,
+        unitSellingPrice: conv(150),
+        unitVariableCost: conv(168),
+        contributionMargin: conv(-18),
         marginPercentage: -12.0,
         monthlyVolumeEstimate: 300,
-        totalMonthlyMarginContribution: -5400,
+        totalMonthlyMarginContribution: conv(-5400),
         status: 'loss_making',
         recommendation: isZh ? '❌ 处于负毛利亏损！库存出清后应立即停止该SKU裁切与缝制。' : isBn ? '❌ লোকসানে বিক্রি হচ্ছে! স্টক ক্লিয়ারেন্স শেষ করে অবিলম্বে এই আইটেমের উৎপাদন বন্ধ করুন।' : isHi ? '❌ घाटे में बिक्री! स्टॉक निकासी के बाद उत्पादन बंद करें।' : '❌ Selling at a loss! Liquidate remaining stock and discontinue production.',
       },

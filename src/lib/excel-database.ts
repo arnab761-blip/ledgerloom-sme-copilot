@@ -420,7 +420,7 @@ export class ExcelDatabase {
         unitVariableCost: Number(map.get('Unit Variable Cost') || DEFAULT_PROFILE.unitVariableCost),
         fabricMetersPerUnit: Number(map.get('Fabric Meters Per Unit') || DEFAULT_PROFILE.fabricMetersPerUnit),
         fabricCostPerMeter: Number(map.get('Fabric Cost Per Meter') || DEFAULT_PROFILE.fabricCostPerMeter),
-        currency: String(map.get('Currency') || DEFAULT_PROFILE.currency),
+        currency: (String(map.get('Currency') || DEFAULT_PROFILE.currency) as any),
       };
     } catch {
       return DEFAULT_PROFILE;

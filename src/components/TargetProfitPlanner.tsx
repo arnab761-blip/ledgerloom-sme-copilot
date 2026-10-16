@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Target,
   Scissors,
@@ -14,34 +14,49 @@ import {
 import { BusinessProfile, TargetProfitPlan } from '@/lib/types';
 import { AccountingEngine } from '@/lib/accounting-engine';
 import { SupportedLanguage, getTranslation } from '@/lib/i18n';
+import { SupportedCurrency, getProfitPresets, getDefaultTargetProfit } from '@/lib/currency';
 
 interface GoalPlannerProps {
   profile: BusinessProfile;
   currentLanguage: SupportedLanguage;
+  currentCurrency?: SupportedCurrency;
 }
 
 export const TargetProfitPlanner: React.FC<GoalPlannerProps> = ({
   profile,
   currentLanguage,
+  currentCurrency = 'BDT',
 }) => {
   const t = (key: string, params?: Record<string, string | number>) =>
     getTranslation(currentLanguage, key, params);
 
-  const [targetProfitInput, setTargetProfitInput] = useState('35000');
+  const activeCurrency = currentCurrency || profile.currency || 'BDT';
+  const activeProfile = AccountingEngine.getConvertedProfile(profile, activeCurrency);
+
+  const [targetProfitInput, setTargetProfitInput] = useState(() => getDefaultTargetProfit(activeCurrency));
   const [period, setPeriod] = useState<'month' | 'quarter' | 'year'>('month');
 
-  const targetAmount = Math.max(1000, Number(targetProfitInput) || 1000);
+  // Update default input when user switches currency
+  useEffect(() => {
+    setTargetProfitInput(getDefaultTargetProfit(activeCurrency));
+  }, [activeCurrency]);
+
+  const minTarget = activeCurrency === 'USD' ? 10 : activeCurrency === 'CNY' ? 100 : 1000;
+  const targetAmount = Math.max(minTarget, Number(targetProfitInput) || minTarget);
   const plan: TargetProfitPlan = AccountingEngine.solveTargetProfit(
-    profile,
+    activeProfile,
     targetAmount,
     period,
     currentLanguage
   );
 
   const productMatrix = AccountingEngine.getProductProfitabilityMatrix(
-    profile,
-    currentLanguage
+    activeProfile,
+    currentLanguage,
+    activeCurrency
   );
+
+  const presets = getProfitPresets(activeCurrency);
 
   return (
     <div className="space-y-6">
@@ -71,33 +86,33 @@ export const TargetProfitPlanner: React.FC<GoalPlannerProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              {t('targetNetProfitLabel')} ({profile.currency})
+              {t('targetNetProfitLabel')} ({activeCurrency})
             </label>
             <div className="relative">
               <input
                 type="number"
-                step="5000"
+                step={activeCurrency === 'USD' ? '50' : activeCurrency === 'CNY' ? '500' : '5000'}
                 value={targetProfitInput}
                 onChange={(e) => setTargetProfitInput(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               <span className="absolute right-3.5 top-3 text-xs font-bold text-slate-400">
-                {profile.currency}
+                {activeCurrency}
               </span>
             </div>
             {/* Quick Presets */}
             <div className="flex gap-2 mt-2">
-              {['10000', '25000', '50000', '100000'].map((preset) => (
+              {presets.map((preset) => (
                 <button
                   key={preset}
-                  onClick={() => setTargetProfitInput(preset)}
+                  onClick={() => setTargetProfitInput(preset.toString())}
                   className={`px-2 py-1 text-[11px] rounded-lg border transition ${
-                    targetProfitInput === preset
+                    targetProfitInput === preset.toString()
                       ? 'bg-indigo-600 text-white border-indigo-600 font-bold'
                       : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                   }`}
                 >
-                  +{Number(preset).toLocaleString()}
+                  +{preset.toLocaleString()}
                 </button>
               ))}
             </div>
@@ -129,86 +144,86 @@ export const TargetProfitPlanner: React.FC<GoalPlannerProps> = ({
             </div>
           </div>
 
-          {/* Business Assumptions summary */}
-          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
-            <div className="font-bold text-slate-800 flex items-center justify-between">
-              <span>{t('currentParametersTitle')}:</span>
-            </div>
-            <div className="flex justify-between text-slate-600">
-              <span>{t('monthlyFixedLabel')}:</span>
-              <span className="font-semibold">
-                {plan.totalFixedCost.toLocaleString()} {profile.currency}
-              </span>
-            </div>
-            <div className="flex justify-between text-slate-600">
-              <span>{t('unitPriceLabel')}:</span>
-              <span className="font-semibold">
-                {profile.unitSellingPrice} {profile.currency}
-              </span>
-            </div>
-            <div className="flex justify-between text-slate-600">
-              <span>{t('unitVarCostLabel')}:</span>
-              <span className="font-semibold">
-                {profile.unitVariableCost} {profile.currency}
-              </span>
-            </div>
-            <div className="flex justify-between text-indigo-700 font-bold pt-1 border-t border-slate-200">
-              <span>{t('unitMarginLabel')}:</span>
-              <span>
-                {plan.unitContributionMargin} {profile.currency}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Calculation Results Column */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Key Deliverable Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Card 1: Required Units */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-              <div>
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <ShoppingBag className="w-4 h-4 text-indigo-600" />
-                  {t('requiredOutputCard')}
+            {/* Business Assumptions summary */}
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
+              <div className="font-bold text-slate-800 flex items-center justify-between">
+                <span>{t('currentParametersTitle')}:</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>{t('monthlyFixedLabel')}:</span>
+                <span className="font-semibold">
+                  {plan.totalFixedCost.toLocaleString()} {activeCurrency}
                 </span>
-                <div className="mt-2 text-3xl font-black text-indigo-600">
-                  {plan.requiredUnits.toLocaleString()} {t('unitPcs')}
-                </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  {t('produceAndDeliverDesc', { product: profile.primaryProduct })}
-                </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-600">
-                {t('expectedRevenueLabel')}:{' '}
-                <strong>
-                  {plan.requiredRevenue.toLocaleString()} {profile.currency}
-                </strong>
-              </div>
-            </div>
-
-            {/* Card 2: Material Required */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-              <div>
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <Scissors className="w-4 h-4 text-emerald-600" />
-                  {t('requiredFabricCard')}
+              <div className="flex justify-between text-slate-600">
+                <span>{t('unitPriceLabel')}:</span>
+                <span className="font-semibold">
+                  {activeProfile.unitSellingPrice} {activeCurrency}
                 </span>
-                <div className="mt-2 text-3xl font-black text-emerald-600">
-                  {plan.requiredFabricMeters.toLocaleString()} {t('unitMeters')}
-                </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  {t('perUnitMaterialDesc', { meters: profile.fabricMetersPerUnit })}
-                </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-600">
-                {t('rawMaterialBudgetLabel')}:{' '}
-                <strong>
-                  {plan.requiredFabricCost.toLocaleString()} {profile.currency}
-                </strong>
+              <div className="flex justify-between text-slate-600">
+                <span>{t('unitVarCostLabel')}:</span>
+                <span className="font-semibold">
+                  {activeProfile.unitVariableCost} {activeCurrency}
+                </span>
+              </div>
+              <div className="flex justify-between text-indigo-700 font-bold pt-1 border-t border-slate-200">
+                <span>{t('unitMarginLabel')}:</span>
+                <span>
+                  {plan.unitContributionMargin} {activeCurrency}
+                </span>
               </div>
             </div>
           </div>
+
+          {/* Calculation Results Column */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Key Deliverable Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Card 1: Required Units */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <ShoppingBag className="w-4 h-4 text-indigo-600" />
+                    {t('requiredOutputCard')}
+                  </span>
+                  <div className="mt-2 text-3xl font-black text-indigo-600">
+                    {plan.requiredUnits.toLocaleString()} {t('unitPcs')}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {t('produceAndDeliverDesc', { product: activeProfile.primaryProduct })}
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-600">
+                  {t('expectedRevenueLabel')}:{' '}
+                  <strong>
+                    {plan.requiredRevenue.toLocaleString()} {activeCurrency}
+                  </strong>
+                </div>
+              </div>
+
+              {/* Card 2: Material Required */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <Scissors className="w-4 h-4 text-emerald-600" />
+                    {t('requiredFabricCard')}
+                  </span>
+                  <div className="mt-2 text-3xl font-black text-emerald-600">
+                    {plan.requiredFabricMeters.toLocaleString()} {t('unitMeters')}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {t('perUnitMaterialDesc', { meters: activeProfile.fabricMetersPerUnit })}
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-600">
+                  {t('rawMaterialBudgetLabel')}:{' '}
+                  <strong>
+                    {plan.requiredFabricCost.toLocaleString()} {activeCurrency}
+                  </strong>
+                </div>
+              </div>
+            </div>
 
           {/* Actionable Strategy Steps */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
@@ -303,10 +318,10 @@ export const TargetProfitPlanner: React.FC<GoalPlannerProps> = ({
                     {item.productName}
                   </td>
                   <td className="py-3.5 px-3 font-semibold text-slate-800">
-                    {item.unitSellingPrice.toLocaleString()} {profile.currency}
+                    {item.unitSellingPrice.toLocaleString()} {activeCurrency}
                   </td>
                   <td className="py-3.5 px-3 text-slate-600">
-                    {item.unitVariableCost.toLocaleString()} {profile.currency}
+                    {item.unitVariableCost.toLocaleString()} {activeCurrency}
                   </td>
                   <td
                     className={`py-3.5 px-3 font-bold ${
@@ -316,7 +331,7 @@ export const TargetProfitPlanner: React.FC<GoalPlannerProps> = ({
                     }`}
                   >
                     {item.contributionMargin >= 0 ? '+' : ''}
-                    {item.contributionMargin.toLocaleString()} {profile.currency}
+                    {item.contributionMargin.toLocaleString()} {activeCurrency}
                   </td>
                   <td className="py-3.5 px-3">
                     <span

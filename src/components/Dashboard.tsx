@@ -25,6 +25,7 @@ import {
 } from 'recharts';
 import { FinancialHealthMetrics, BusinessProfile, DebtorRecord, LoanLiability, AnomalyAlert } from '@/lib/types';
 import { SupportedLanguage, getTranslation } from '@/lib/i18n';
+import { SupportedCurrency, convertCurrency } from '@/lib/currency';
 
 interface DashboardProps {
   metrics: FinancialHealthMetrics;
@@ -34,6 +35,7 @@ interface DashboardProps {
   anomalies?: AnomalyAlert[];
   onNavigateTab: (tab: string) => void;
   currentLanguage: SupportedLanguage;
+  currentCurrency?: SupportedCurrency;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -44,33 +46,36 @@ export const Dashboard: React.FC<DashboardProps> = ({
   anomalies = [],
   onNavigateTab,
   currentLanguage,
+  currentCurrency = 'BDT',
 }) => {
-  const currency = profile.currency || 'BDT';
+  const activeCurrency = currentCurrency || profile.currency || 'BDT';
+  const conv = (amt: number) => convertCurrency(amt, 'BDT', activeCurrency);
+
   const t = (key: string, params?: Record<string, string | number>) =>
     getTranslation(currentLanguage, key, params);
 
   const [forecastDays, setForecastDays] = React.useState<30 | 60>(30);
 
-  // 30-day forecast curve
+  // 30-day forecast curve (converted dynamically to active currency)
   const cashFlowForecast30 = [
-    { day: 'Day 1', inflow: 45000, outflow: 20000, balance: 125000 },
-    { day: 'Day 5', inflow: 60000, outflow: 35000, balance: 150000 },
-    { day: 'Day 10', inflow: 30000, outflow: 85000, balance: 95000 },
-    { day: 'Day 15', inflow: 80000, outflow: 25000, balance: 150000 },
-    { day: 'Day 20 (Payable/Due)', inflow: 20000, outflow: 145000, balance: 25000 },
-    { day: 'Day 25', inflow: 95000, outflow: 30000, balance: 90000 },
-    { day: 'Day 30', inflow: 50000, outflow: 20000, balance: 120000 },
+    { day: 'Day 1', inflow: conv(45000), outflow: conv(20000), balance: conv(125000) },
+    { day: 'Day 5', inflow: conv(60000), outflow: conv(35000), balance: conv(150000) },
+    { day: 'Day 10', inflow: conv(30000), outflow: conv(85000), balance: conv(95000) },
+    { day: 'Day 15', inflow: conv(80000), outflow: conv(25000), balance: conv(150000) },
+    { day: 'Day 20 (Payable/Due)', inflow: conv(20000), outflow: conv(145000), balance: conv(25000) },
+    { day: 'Day 25', inflow: conv(95000), outflow: conv(30000), balance: conv(90000) },
+    { day: 'Day 30', inflow: conv(50000), outflow: conv(20000), balance: conv(120000) },
   ];
 
   // 60-day forecast curve (Past 3-6 months pattern projection)
   const cashFlowForecast60 = [
-    { day: 'Day 1', inflow: 45000, outflow: 20000, balance: 125000 },
-    { day: 'Day 10', inflow: 75000, outflow: 55000, balance: 145000 },
-    { day: 'Day 20 (Month 1 Due)', inflow: 30000, outflow: 140000, balance: 35000 },
-    { day: 'Day 30', inflow: 95000, outflow: 35000, balance: 95000 },
-    { day: 'Day 40', inflow: 65000, outflow: 40000, balance: 120000 },
-    { day: 'Day 50 (Month 2 Due)', inflow: 40000, outflow: 135000, balance: 25000 },
-    { day: 'Day 60', inflow: 110000, outflow: 45000, balance: 150000 },
+    { day: 'Day 1', inflow: conv(45000), outflow: conv(20000), balance: conv(125000) },
+    { day: 'Day 10', inflow: conv(75000), outflow: conv(55000), balance: conv(145000) },
+    { day: 'Day 20 (Month 1 Due)', inflow: conv(30000), outflow: conv(140000), balance: conv(35000) },
+    { day: 'Day 30', inflow: conv(95000), outflow: conv(35000), balance: conv(95000) },
+    { day: 'Day 40', inflow: conv(65000), outflow: conv(40000), balance: conv(120000) },
+    { day: 'Day 50 (Month 2 Due)', inflow: conv(40000), outflow: conv(135000), balance: conv(25000) },
+    { day: 'Day 60', inflow: conv(110000), outflow: conv(45000), balance: conv(150000) },
   ];
 
   const activeForecast = forecastDays === 30 ? cashFlowForecast30 : cashFlowForecast60;
@@ -78,9 +83,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const isSurplus = finalProjectedBalance >= 0;
 
   const costBreakdownData = [
-    { name: t('fixedCostOption').slice(0, 14), amount: metrics.totalFixedCosts, fill: '#6366f1' },
-    { name: t('variableCostOption').slice(0, 14), amount: metrics.totalVariableCosts, fill: '#06b6d4' },
-    { name: t('tabLoans').slice(0, 14), amount: metrics.monthlyLoanObligation, fill: '#f59e0b' },
+    { name: t('fixedCostOption').slice(0, 14), amount: conv(metrics.totalFixedCosts), fill: '#6366f1' },
+    { name: t('variableCostOption').slice(0, 14), amount: conv(metrics.totalVariableCosts), fill: '#06b6d4' },
+    { name: t('tabLoans').slice(0, 14), amount: conv(metrics.monthlyLoanObligation), fill: '#f59e0b' },
   ];
 
   const highRiskDebtors = debtors.filter(
@@ -175,7 +180,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <div className="mt-3">
             <span className="text-2xl font-black text-slate-900">
-              {metrics.totalRevenue.toLocaleString()} {currency}
+              {conv(metrics.totalRevenue).toLocaleString()} {activeCurrency}
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-500">
@@ -195,13 +200,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <div className="mt-3">
             <span className="text-2xl font-black text-slate-900">
-              {metrics.totalExpenses.toLocaleString()} {currency}
+              {conv(metrics.totalExpenses).toLocaleString()} {activeCurrency}
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-500">
             {t('fixedVarSplit', {
-              fixed: metrics.totalFixedCosts.toLocaleString(),
-              variable: metrics.totalVariableCosts.toLocaleString(),
+              fixed: conv(metrics.totalFixedCosts).toLocaleString(),
+              variable: conv(metrics.totalVariableCosts).toLocaleString(),
             })}
           </p>
         </div>
@@ -233,7 +238,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               }`}
             >
               {metrics.netProfit >= 0 ? '+' : ''}
-              {metrics.netProfit.toLocaleString()} {currency}
+              {conv(metrics.netProfit).toLocaleString()} {activeCurrency}
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-500">
@@ -258,8 +263,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <p className="mt-1 text-xs text-slate-500">
             {t('monthlyEmiObligation', {
-              amount: metrics.monthlyLoanObligation.toLocaleString(),
-              currency,
+              amount: conv(metrics.monthlyLoanObligation).toLocaleString(),
+              currency: activeCurrency,
             })}
           </p>
         </div>
@@ -285,11 +290,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   {isSurplus
                     ? t('surplusBadge', {
                         amount: finalProjectedBalance.toLocaleString(),
-                        currency,
+                        currency: activeCurrency,
                       })
                     : t('shortfallBadge', {
                         amount: finalProjectedBalance.toLocaleString(),
-                        currency,
+                        currency: activeCurrency,
                       })}
                 </span>
               </div>
@@ -337,7 +342,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <XAxis dataKey="day" stroke="#94a3b8" fontSize={11} />
                 <YAxis stroke="#94a3b8" fontSize={11} />
                 <Tooltip
-                  formatter={(value: any) => [`${Number(value).toLocaleString()} ${currency}`, '']}
+                  formatter={(value: any) => [`${Number(value).toLocaleString()} ${activeCurrency}`, '']}
                 />
                 <Legend />
                 <Area
@@ -389,7 +394,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <XAxis type="number" stroke="#94a3b8" fontSize={10} />
                   <YAxis type="category" dataKey="name" stroke="#94a3b8" fontSize={10} width={90} />
                   <Tooltip
-                    formatter={(val: any) => [`${Number(val).toLocaleString()} ${currency}`, '']}
+                    formatter={(val: any) => [`${Number(val).toLocaleString()} ${activeCurrency}`, '']}
                   />
                   <Bar dataKey="amount" radius={[0, 6, 6, 0]} />
                 </BarChart>
@@ -400,12 +405,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
             <span className="text-xs text-slate-500">{t('totalMonthlyBurden')}</span>
             <span className="text-xs font-bold text-slate-900">
-              {(
+              {conv(
                 metrics.totalFixedCosts +
                 metrics.totalVariableCosts +
                 metrics.monthlyLoanObligation
               ).toLocaleString()}{' '}
-              {currency}
+              {activeCurrency}
             </span>
           </div>
         </div>

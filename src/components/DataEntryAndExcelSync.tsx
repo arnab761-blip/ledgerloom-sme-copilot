@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { BusinessProfile, Transaction } from '@/lib/types';
 import { SupportedLanguage, getTranslation } from '@/lib/i18n';
+import { SupportedCurrency, convertCurrency } from '@/lib/currency';
 
 interface DataEntryProps {
   profile: BusinessProfile;
@@ -25,6 +26,7 @@ interface DataEntryProps {
   isUnlocked: boolean;
   onRequireUnlock: () => void;
   currentLanguage: SupportedLanguage;
+  currentCurrency?: SupportedCurrency;
 }
 
 export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
@@ -36,7 +38,10 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
   isUnlocked,
   onRequireUnlock,
   currentLanguage,
+  currentCurrency = 'BDT',
 }) => {
+  const activeCurrency = currentCurrency || profile.currency || 'BDT';
+  const conv = (amt: number) => convertCurrency(amt, 'BDT', activeCurrency);
   const t = (key: string, params?: Record<string, string | number>) =>
     getTranslation(currentLanguage, key, params);
 
@@ -73,12 +78,15 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
     setTxLoading(true);
     setTxSuccessMessage('');
 
+    const enteredAmount = Number(txAmount);
+    const amountInBDT = Math.round(convertCurrency(enteredAmount, activeCurrency, 'BDT'));
+
     const success = await onAddTransaction({
       date: new Date().toISOString().split('T')[0],
       type: txType,
       category: txCategory,
       costType: txCostType,
-      amount: Number(txAmount),
+      amount: amountInBDT,
       description: txDescription || `${txCategory}`,
       partyName: txPartyName,
       paymentMethod: txPaymentMethod,
@@ -211,7 +219,12 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    {t('amountLabel')} ({profile.currency}) *
+                    {t('amountLabel')} ({activeCurrency}) *
+                    {activeCurrency !== 'BDT' && txAmount && Number(txAmount) > 0 && (
+                      <span className="text-[10px] text-slate-400 font-normal ml-2">
+                        (≈ ৳{Math.round(convertCurrency(Number(txAmount), activeCurrency, 'BDT')).toLocaleString()} BDT)
+                      </span>
+                    )}
                   </label>
                   <input
                     type="number"
@@ -572,7 +585,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                   <th className="px-3 py-2.5">Category</th>
                   <th className="px-3 py-2.5">Cost Type</th>
                   <th className="px-3 py-2.5">Party / Client</th>
-                  <th className="px-3 py-2.5 text-right">{t('amountLabel')} ({profile.currency})</th>
+                  <th className="px-3 py-2.5 text-right">{t('amountLabel')} ({activeCurrency})</th>
                   <th className="px-3 py-2.5">{t('paymentMethodLabel')}</th>
                   <th className="px-3 py-2.5">{t('statusTh')}</th>
                 </tr>
@@ -602,7 +615,12 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                       }`}
                     >
                       {tx.type === 'income' ? '+' : '-'}
-                      {tx.amount.toLocaleString()}
+                      {conv(tx.amount).toLocaleString()} {activeCurrency}
+                      {activeCurrency !== 'BDT' && (
+                        <div className="text-[10px] text-slate-400 font-normal">
+                          (৳{tx.amount.toLocaleString()})
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 capitalize text-slate-500">{tx.paymentMethod}</td>
                     <td className="px-3 py-2.5">

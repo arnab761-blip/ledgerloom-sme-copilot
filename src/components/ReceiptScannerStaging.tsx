@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Transaction, BusinessProfile } from '@/lib/types';
 import { SupportedLanguage, getTranslation } from '@/lib/i18n';
+import { SupportedCurrency, convertCurrency } from '@/lib/currency';
 
 interface StagingProps {
   transactions: Transaction[];
@@ -24,6 +25,7 @@ interface StagingProps {
   isUnlocked: boolean;
   onRequireUnlock: () => void;
   currentLanguage: SupportedLanguage;
+  currentCurrency?: SupportedCurrency;
 }
 
 export const ReceiptScannerStaging: React.FC<StagingProps> = ({
@@ -35,7 +37,10 @@ export const ReceiptScannerStaging: React.FC<StagingProps> = ({
   isUnlocked,
   onRequireUnlock,
   currentLanguage,
+  currentCurrency = 'BDT',
 }) => {
+  const activeCurrency = currentCurrency || profile.currency || 'BDT';
+  const conv = (amt: number) => convertCurrency(amt, 'BDT', activeCurrency);
   const t = (key: string, params?: Record<string, string | number>) =>
     getTranslation(currentLanguage, key, params);
 
@@ -243,7 +248,7 @@ export const ReceiptScannerStaging: React.FC<StagingProps> = ({
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                   </div>
                   <div className="text-indigo-600 font-bold">
-                    {memo.amount.toLocaleString()} {profile.currency}
+                    {conv(memo.amount).toLocaleString()} {activeCurrency}
                   </div>
                   <div className="text-[11px] text-slate-500">{memo.desc}</div>
                 </button>
@@ -316,7 +321,7 @@ export const ReceiptScannerStaging: React.FC<StagingProps> = ({
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right">
                     <div className="text-base font-black text-rose-600">
-                      -{tx.amount.toLocaleString()} {profile.currency}
+                      -{conv(tx.amount).toLocaleString()} {activeCurrency}
                     </div>
                     <div className="text-[10px] text-slate-400">{tx.date}</div>
                   </div>

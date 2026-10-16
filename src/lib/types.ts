@@ -1,5 +1,8 @@
-export type CostClassification = 'fixed' | 'variable';
+import { SupportedCurrency } from './currency';
+export type { SupportedCurrency };
+
 export type TransactionType = 'income' | 'expense';
+export type CostClassification = 'fixed' | 'variable';
 
 export interface BusinessProfile {
   businessName: string;
@@ -17,7 +20,7 @@ export interface BusinessProfile {
   unitVariableCost: number; // fabric + thread + wash e.g. 220 BDT
   fabricMetersPerUnit: number; // e.g. 1.25 meters
   fabricCostPerMeter: number; // e.g. 120 BDT
-  currency: string; // "BDT" or "USD"
+  currency: SupportedCurrency; // "BDT" | "CNY" | "USD"
 }
 
 export interface Transaction {

@@ -3,11 +3,13 @@ import { ExcelDatabase } from '@/lib/excel-database';
 import { AccountingEngine } from '@/lib/accounting-engine';
 
 import { SupportedLanguage } from '@/lib/i18n';
+import { SupportedCurrency } from '@/lib/currency';
 
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const lang = (url.searchParams.get('lang') || 'en') as SupportedLanguage;
+    const currency = (url.searchParams.get('currency') || 'BDT') as SupportedCurrency;
 
     const profile = ExcelDatabase.getProfile();
     const transactions = ExcelDatabase.getTransactions();
@@ -26,14 +28,16 @@ export async function GET(req: Request) {
       profile,
       healthMetrics,
       debtors,
-      lang
+      lang,
+      currency
     );
     const anomalies = AccountingEngine.detectAnomalies(
       profile,
       healthMetrics,
       transactions,
       debtors,
-      lang
+      lang,
+      currency
     );
 
     return NextResponse.json({

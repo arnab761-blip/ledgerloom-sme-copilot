@@ -22,6 +22,7 @@ import {
   AnomalyAlert,
 } from '@/lib/types';
 import { SupportedLanguage, getTranslation } from '@/lib/i18n';
+import { SupportedCurrency } from '@/lib/currency';
 
 export default function HomePage() {
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -30,6 +31,9 @@ export default function HomePage() {
 
   // Multi-language state (Default: English for international track, easily switchable to Chinese, Bengali, Hindi)
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>('en');
+
+  // Multi-currency state (Default: BDT for local factories, switchable to CNY or USD)
+  const [currentCurrency, setCurrentCurrency] = useState<SupportedCurrency>('BDT');
 
   const t = (key: string, params?: Record<string, string | number>) =>
     getTranslation(currentLanguage, key, params);
@@ -50,50 +54,69 @@ export default function HomePage() {
   const [anomalies, setAnomalies] = useState<AnomalyAlert[]>([]);
   const [currentPreset, setCurrentPreset] = useState<'garments' | 'cafe'>('garments');
 
-  // Load Financial Data (passes lang query param to retrieve localized anomalies & options)
-  const loadFinancialData = useCallback(async (lang?: SupportedLanguage) => {
-    try {
-      const activeLang = lang || currentLanguage;
-      const res = await fetch(`/api/data?lang=${activeLang}`);
-      const json = await res.json();
-      if (json.success) {
-        setProfile(json.profile);
-        setTransactions(json.transactions);
-        setDebtors(json.debtors);
-        setLoans(json.loans);
-        setAuditLogs(json.auditLogs);
-        setMetrics(json.healthMetrics);
-        if (json.financingOptions) setFinancingOptions(json.financingOptions);
-        if (json.anomalies) setAnomalies(json.anomalies);
-        if (
-          json.profile?.industry?.toLowerCase().includes('coffee') ||
-          json.profile?.industry?.toLowerCase().includes('café')
-        ) {
-          setCurrentPreset('cafe');
-        } else {
-          setCurrentPreset('garments');
+  // Load Financial Data (passes lang and currency query params to retrieve localized & converted data)
+  const loadFinancialData = useCallback(
+    async (lang?: SupportedLanguage, curr?: SupportedCurrency) => {
+      try {
+        const activeLang = lang || currentLanguage;
+        const activeCurr = curr || currentCurrency;
+        const res = await fetch(`/api/data?lang=${activeLang}&currency=${activeCurr}`);
+        const json = await res.json();
+        if (json.success) {
+          setProfile(json.profile);
+          setTransactions(json.transactions);
+          setDebtors(json.debtors);
+          setLoans(json.loans);
+          setAuditLogs(json.auditLogs);
+          setMetrics(json.healthMetrics);
+          if (json.financingOptions) setFinancingOptions(json.financingOptions);
+          if (json.anomalies) setAnomalies(json.anomalies);
+          if (
+            json.profile?.industry?.toLowerCase().includes('coffee') ||
+            json.profile?.industry?.toLowerCase().includes('café')
+          ) {
+            setCurrentPreset('cafe');
+          } else {
+            setCurrentPreset('garments');
+          }
+          setDataLoaded(true);
         }
-        setDataLoaded(true);
+      } catch (err) {
+        console.error('Failed to load data', err);
       }
-    } catch (err) {
-      console.error('Failed to load data', err);
-    }
-  }, [currentLanguage]);
+    },
+    [currentLanguage, currentCurrency]
+  );
 
   useEffect(() => {
-    const saved = localStorage.getItem('ledgerloom_lang') as SupportedLanguage | null;
-    if (saved && (saved === 'en' || saved === 'zh' || saved === 'bn' || saved === 'hi')) {
-      setCurrentLanguage(saved);
-      loadFinancialData(saved);
-    } else {
-      loadFinancialData('en');
-    }
+    const savedLang = localStorage.getItem('ledgerloom_lang') as SupportedLanguage | null;
+    const savedCurr = localStorage.getItem('ledgerloom_currency') as SupportedCurrency | null;
+
+    const initialLang =
+      savedLang &&
+      (savedLang === 'en' || savedLang === 'zh' || savedLang === 'bn' || savedLang === 'hi')
+        ? savedLang
+        : 'en';
+    const initialCurr =
+      savedCurr && (savedCurr === 'BDT' || savedCurr === 'CNY' || savedCurr === 'USD')
+        ? savedCurr
+        : 'BDT';
+
+    setCurrentLanguage(initialLang);
+    setCurrentCurrency(initialCurr);
+    loadFinancialData(initialLang, initialCurr);
   }, []);
 
   const handleChangeLanguage = (lang: SupportedLanguage) => {
     setCurrentLanguage(lang);
     localStorage.setItem('ledgerloom_lang', lang);
-    loadFinancialData(lang);
+    loadFinancialData(lang, currentCurrency);
+  };
+
+  const handleChangeCurrency = (curr: SupportedCurrency) => {
+    setCurrentCurrency(curr);
+    localStorage.setItem('ledgerloom_currency', curr);
+    loadFinancialData(currentLanguage, curr);
   };
 
   const handleSwitchPreset = async (preset: 'garments' | 'cafe') => {
@@ -106,7 +129,7 @@ export default function HomePage() {
       const data = await res.json();
       if (data.success) {
         setCurrentPreset(preset);
-        await loadFinancialData(currentLanguage);
+        await loadFinancialData(currentLanguage, currentCurrency);
       }
     } catch (err) {
       console.error('Failed to switch preset', err);
@@ -182,7 +205,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (data.success) {
-        await loadFinancialData(currentLanguage);
+        await loadFinancialData(currentLanguage, currentCurrency);
         return true;
       }
       return false;
@@ -200,7 +223,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (data.success) {
-        await loadFinancialData(currentLanguage);
+        await loadFinancialData(currentLanguage, currentCurrency);
         return true;
       }
       return false;
@@ -218,7 +241,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (data.success) {
-        await loadFinancialData(currentLanguage);
+        await loadFinancialData(currentLanguage, currentCurrency);
         return true;
       }
       return false;
@@ -236,7 +259,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (data.success) {
-        await loadFinancialData(currentLanguage);
+        await loadFinancialData(currentLanguage, currentCurrency);
         return true;
       }
       return false;
@@ -254,7 +277,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (data.success) {
-        await loadFinancialData(currentLanguage);
+        await loadFinancialData(currentLanguage, currentCurrency);
         return true;
       }
       return false;
@@ -275,7 +298,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (data.success) {
-        await loadFinancialData(currentLanguage);
+        await loadFinancialData(currentLanguage, currentCurrency);
         return true;
       }
       return false;
@@ -293,7 +316,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (data.success) {
-        await loadFinancialData(currentLanguage);
+        await loadFinancialData(currentLanguage, currentCurrency);
         return true;
       }
       return false;
@@ -335,9 +358,11 @@ export default function HomePage() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         pendingApprovalsCount={pendingApprovalsCount}
-        onRefreshData={() => loadFinancialData(currentLanguage)}
+        onRefreshData={() => loadFinancialData(currentLanguage, currentCurrency)}
         currentLanguage={currentLanguage}
         onChangeLanguage={handleChangeLanguage}
+        currentCurrency={currentCurrency}
+        onChangeCurrency={handleChangeCurrency}
         currentPreset={currentPreset}
         onSwitchPreset={handleSwitchPreset}
       />
@@ -352,6 +377,7 @@ export default function HomePage() {
             anomalies={anomalies}
             onNavigateTab={setActiveTab}
             currentLanguage={currentLanguage}
+            currentCurrency={currentCurrency}
           />
         )}
 
@@ -359,12 +385,13 @@ export default function HomePage() {
           <DataEntryAndExcelSync
             profile={profile}
             transactions={transactions}
-            onRefreshData={() => loadFinancialData(currentLanguage)}
+            onRefreshData={() => loadFinancialData(currentLanguage, currentCurrency)}
             onUpdateProfile={handleUpdateProfile}
             onAddTransaction={handleAddTransaction}
             isUnlocked={isUnlocked}
             onRequireUnlock={() => setIsSecurityModalOpen(true)}
             currentLanguage={currentLanguage}
+            currentCurrency={currentCurrency}
           />
         )}
 
@@ -378,6 +405,7 @@ export default function HomePage() {
             isUnlocked={isUnlocked}
             onRequireUnlock={() => setIsSecurityModalOpen(true)}
             currentLanguage={currentLanguage}
+            currentCurrency={currentCurrency}
           />
         )}
 
@@ -390,6 +418,7 @@ export default function HomePage() {
             isUnlocked={isUnlocked}
             onRequireUnlock={() => setIsSecurityModalOpen(true)}
             currentLanguage={currentLanguage}
+            currentCurrency={currentCurrency}
           />
         )}
 
@@ -401,6 +430,7 @@ export default function HomePage() {
             isUnlocked={isUnlocked}
             onRequireUnlock={() => setIsSecurityModalOpen(true)}
             currentLanguage={currentLanguage}
+            currentCurrency={currentCurrency}
           />
         )}
 
@@ -413,6 +443,7 @@ export default function HomePage() {
             isUnlocked={isUnlocked}
             onRequireUnlock={() => setIsSecurityModalOpen(true)}
             currentLanguage={currentLanguage}
+            currentCurrency={currentCurrency}
           />
         )}
 
@@ -420,6 +451,7 @@ export default function HomePage() {
           <TargetProfitPlanner
             profile={profile}
             currentLanguage={currentLanguage}
+            currentCurrency={currentCurrency}
           />
         )}
 
@@ -427,6 +459,7 @@ export default function HomePage() {
           <CopilotChat
             onNavigateTab={setActiveTab}
             currentLanguage={currentLanguage}
+            currentCurrency={currentCurrency}
           />
         )}
 

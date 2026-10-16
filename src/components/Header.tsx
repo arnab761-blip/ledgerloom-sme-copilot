@@ -8,12 +8,17 @@ import {
   Upload,
   Globe,
   ChevronDown,
+  Coins,
 } from 'lucide-react';
 import {
   SupportedLanguage,
   SUPPORTED_LANGUAGES,
   getTranslation,
 } from '@/lib/i18n';
+import {
+  SupportedCurrency,
+  SUPPORTED_CURRENCIES,
+} from '@/lib/currency';
 
 interface HeaderProps {
   isUnlocked: boolean;
@@ -25,6 +30,8 @@ interface HeaderProps {
   onRefreshData?: () => void;
   currentLanguage: SupportedLanguage;
   onChangeLanguage: (lang: SupportedLanguage) => void;
+  currentCurrency: SupportedCurrency;
+  onChangeCurrency: (currency: SupportedCurrency) => void;
   currentPreset?: 'garments' | 'cafe';
   onSwitchPreset?: (preset: 'garments' | 'cafe') => void;
 }
@@ -39,11 +46,14 @@ export const Header: React.FC<HeaderProps> = ({
   onRefreshData,
   currentLanguage,
   onChangeLanguage,
+  currentCurrency,
+  onChangeCurrency,
   currentPreset = 'garments',
   onSwitchPreset,
 }) => {
   const [uploading, setUploading] = useState(false);
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+  const [isCurrencyMenuOpen, setIsCurrencyMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const t = (key: string, params?: Record<string, string | number>) =>
@@ -96,6 +106,10 @@ export const Header: React.FC<HeaderProps> = ({
   const currentLangObj =
     SUPPORTED_LANGUAGES.find((l) => l.code === currentLanguage) ||
     SUPPORTED_LANGUAGES[0];
+
+  const currentCurrencyObj =
+    SUPPORTED_CURRENCIES.find((c) => c.code === currentCurrency) ||
+    SUPPORTED_CURRENCIES[0];
 
   return (
     <header className="sticky top-0 z-40 bg-slate-900 text-white shadow-xl border-b border-slate-800">
@@ -188,6 +202,47 @@ export const Header: React.FC<HeaderProps> = ({
                         <span>{l.nativeName}</span>
                       </span>
                       {currentLanguage === l.code && <span className="text-emerald-400 font-bold">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Currency Selector Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsCurrencyMenuOpen(!isCurrencyMenuOpen)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition shadow-sm"
+                title="Change Currency / 货币设置 / মুদ্রা পরিবর্তন"
+              >
+                <Coins className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{currentCurrencyObj.flag} {currentCurrencyObj.code} ({currentCurrencyObj.symbol})</span>
+                <ChevronDown className="w-3 h-3 text-slate-400" />
+              </button>
+
+              {isCurrencyMenuOpen && (
+                <div className="absolute right-0 mt-1 w-52 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95">
+                  <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-700/60">
+                    Select Currency / 币种选择
+                  </div>
+                  {SUPPORTED_CURRENCIES.map((c) => (
+                    <button
+                      key={c.code}
+                      onClick={() => {
+                        onChangeCurrency(c.code);
+                        setIsCurrencyMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-700/80 transition ${
+                        currentCurrency === c.code
+                          ? 'text-emerald-400 font-bold bg-slate-700/50'
+                          : 'text-slate-300'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>{c.flag}</span>
+                        <span>{c.nativeName}</span>
+                      </span>
+                      {currentCurrency === c.code && <span className="text-emerald-400 font-bold">✓</span>}
                     </button>
                   ))}
                 </div>

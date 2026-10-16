@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { AgentResponse } from '@/lib/agent-orchestrator';
 import { SupportedLanguage, getTranslation } from '@/lib/i18n';
+import { SupportedCurrency, formatCurrencyAmount } from '@/lib/currency';
 
 interface Message {
   id: string;
@@ -26,11 +27,13 @@ interface Message {
 interface CopilotChatProps {
   onNavigateTab: (tab: string) => void;
   currentLanguage: SupportedLanguage;
+  currentCurrency?: SupportedCurrency;
 }
 
 export const CopilotChat: React.FC<CopilotChatProps> = ({
   onNavigateTab,
   currentLanguage,
+  currentCurrency = 'BDT',
 }) => {
   const t = (key: string, params?: Record<string, string | number>) =>
     getTranslation(currentLanguage, key, params);
@@ -56,32 +59,47 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
     ]);
   }, [currentLanguage]);
 
+  // Currency-aware prompt values
+  const targetProfitText =
+    currentCurrency === 'USD'
+      ? '$500'
+      : currentCurrency === 'CNY'
+      ? '¥3,000'
+      : '৫০,০০০ টাকা';
+
+  const debtorOverdueText =
+    currentCurrency === 'USD'
+      ? '>$250'
+      : currentCurrency === 'CNY'
+      ? '>¥1,800'
+      : '>৩০,০০০';
+
   const quickPromptsByLang: Record<SupportedLanguage, string[]> = {
     en: [
       'Show financing options',
-      'I want to make 30,000 profit next month, what to do?',
-      'Who owes overdue money (>30k)?',
+      `I want to make ${targetProfitText} profit next month, what to do?`,
+      `Who owes overdue money (${debtorOverdueText})?`,
       'How much debt is remaining and EMI?',
       'Where did we spend the most overhead?',
     ],
     zh: [
       '显示适合我的贷款方案',
-      '下个月想要赚 30,000 净利润，需要做什么？',
-      '有哪些客户欠款超过 30,000 警戒线？',
+      `下个月想要赚 ${targetProfitText} 净利润，需要做什么？`,
+      `有哪些客户欠款超过 ${debtorOverdueText} 警戒线？`,
       '当前剩余贷款本金及月供是多少？',
       '哪项成本开支占比最高？',
     ],
     bn: [
       'লোনের অপশনগুলো দেখাও',
-      'সামনের মাসে ২৫,০০০ টাকা লাভ করতে চাই, কি কি করতে হবে?',
-      'কার কাছে কত টাকা বাকি আছে (>৩০k)?',
+      `সামনের মাসে ${targetProfitText} লাভ করতে চাই, কি কি করতে হবে?`,
+      `কার কাছে কত টাকা বাকি আছে (${debtorOverdueText})?`,
       'ঋণ কত বাকি আছে এবং মাসিক কিস্তির হিসাব দাও',
       'কোথায় সবচেয়ে বেশি খরচ হয়েছে?',
     ],
     hi: [
       'ऋण विकल्प दिखाओ',
-      'अगले महीने 30,000 लाभ कमाने के लिए क्या करें?',
-      'किन ग्राहकों का 30,000 से अधिक बकाया है?',
+      `अगले महीने ${targetProfitText} लाभ कमाने के लिए क्या करें?`,
+      `किन ग्राहकों का ${debtorOverdueText} से अधिक बकाया है?`,
       'कुल कितना ऋण बाकी है और मासिक किस्त?',
       'सबसे ज्यादा खर्च किस मद में हुआ?',
     ],
@@ -116,7 +134,11 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q, language: currentLanguage }),
+        body: JSON.stringify({
+          query: q,
+          language: currentLanguage,
+          currency: currentCurrency,
+        }),
       });
       const data: AgentResponse & { success: boolean } = await res.json();
 

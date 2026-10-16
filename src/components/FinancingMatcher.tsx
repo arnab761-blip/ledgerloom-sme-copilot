@@ -22,6 +22,7 @@ import {
   DebtorRecord,
 } from '@/lib/types';
 import { SupportedLanguage, getTranslation } from '@/lib/i18n';
+import { SupportedCurrency } from '@/lib/currency';
 
 interface FinancingProps {
   financingOptions: FinancingOption[];
@@ -31,6 +32,7 @@ interface FinancingProps {
   isUnlocked: boolean;
   onRequireUnlock: () => void;
   currentLanguage: SupportedLanguage;
+  currentCurrency?: SupportedCurrency;
 }
 
 export const FinancingMatcher: React.FC<FinancingProps> = ({
@@ -41,7 +43,9 @@ export const FinancingMatcher: React.FC<FinancingProps> = ({
   isUnlocked,
   onRequireUnlock,
   currentLanguage,
+  currentCurrency = 'BDT',
 }) => {
+  const activeCurrency = currentCurrency || profile.currency || 'BDT';
   const t = (key: string, params?: Record<string, string | number>) =>
     getTranslation(currentLanguage, key, params);
 
@@ -171,7 +175,7 @@ export const FinancingMatcher: React.FC<FinancingProps> = ({
                 <div>
                   <div className="text-[10px] text-slate-500">{t('maxCreditLimitLabel')}</div>
                   <div className="text-xs font-bold text-indigo-600">
-                    {opt.maxAmount.toLocaleString()} {profile.currency}
+                    {opt.maxAmount.toLocaleString()} {activeCurrency}
                   </div>
                 </div>
               </div>

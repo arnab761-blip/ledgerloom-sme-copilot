@@ -14,6 +14,7 @@ import {
 import { LoanLiability, BusinessProfile } from '@/lib/types';
 import { AccountingEngine } from '@/lib/accounting-engine';
 import { SupportedLanguage, getTranslation } from '@/lib/i18n';
+import { SupportedCurrency, convertCurrency } from '@/lib/currency';
 
 interface LoanProps {
   loans: LoanLiability[];
@@ -22,6 +23,7 @@ interface LoanProps {
   isUnlocked: boolean;
   onRequireUnlock: () => void;
   currentLanguage: SupportedLanguage;
+  currentCurrency?: SupportedCurrency;
 }
 
 export const LoanReconciliation: React.FC<LoanProps> = ({
@@ -31,7 +33,11 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
   isUnlocked,
   onRequireUnlock,
   currentLanguage,
+  currentCurrency = 'BDT',
 }) => {
+  const activeCurrency = currentCurrency || profile.currency || 'BDT';
+  const conv = (amt: number) => convertCurrency(amt, 'BDT', activeCurrency);
+
   const t = (key: string, params?: Record<string, string | number>) =>
     getTranslation(currentLanguage, key, params);
 
@@ -39,10 +45,15 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
   const [payAmount, setPayAmount] = useState('');
   const [paySuccess, setPaySuccess] = useState('');
 
-  // Interactive Simulator State
-  const [simPrincipal, setSimPrincipal] = useState('200000');
+  // Interactive Simulator State - adapts default to selected currency
+  const defaultSim = activeCurrency === 'USD' ? '1600' : activeCurrency === 'CNY' ? '12000' : '200000';
+  const [simPrincipal, setSimPrincipal] = useState(defaultSim);
   const [simRate, setSimRate] = useState('9.0');
   const [simTenure, setSimTenure] = useState('12');
+
+  React.useEffect(() => {
+    setSimPrincipal(activeCurrency === 'USD' ? '1600' : activeCurrency === 'CNY' ? '12000' : '200000');
+  }, [activeCurrency]);
 
   const simResult = AccountingEngine.calculateLoanEMI(
     Number(simPrincipal) || 0,
@@ -58,16 +69,20 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
     }
     if (!selectedLoan || !payAmount || Number(payAmount) <= 0) return;
 
-    const success = await onRecordPayment(selectedLoan.id, Number(payAmount));
+    // Convert payment to BDT base for Excel database consistency
+    const enteredAmt = Number(payAmount);
+    const amountInBDT = convertCurrency(enteredAmt, activeCurrency, 'BDT');
+
+    const success = await onRecordPayment(selectedLoan.id, amountInBDT);
     if (success) {
       const msg =
         currentLanguage === 'zh'
-          ? `已成功记账还款 ${Number(payAmount).toLocaleString()} ${profile.currency} 并完成贷款对账核销！`
+          ? `已成功记账还款 ${enteredAmt.toLocaleString()} ${activeCurrency} 并完成贷款对账核销！`
           : currentLanguage === 'hi'
-          ? `सफलतापूर्वक ${Number(payAmount).toLocaleString()} ${profile.currency} की किस्त दर्ज की गई और ऋण का समाधान किया गया!`
+          ? `सफलतापूर्वक ${enteredAmt.toLocaleString()} ${activeCurrency} की किस्त दर्ज की गई और ऋण का समाधान किया गया!`
           : currentLanguage === 'bn'
-          ? `সফলভাবে ${Number(payAmount).toLocaleString()} ${profile.currency} ঋণ পরিশোধ ও রিকনসাইল করা হয়েছে!`
-          : `Successfully recorded repayment of ${Number(payAmount).toLocaleString()} ${profile.currency} and updated amortization ledger!`;
+          ? `সফলভাবে ${enteredAmt.toLocaleString()} ${activeCurrency} ঋণ পরিশোধ ও রিকনসাইল করা হয়েছে!`
+          : `Successfully recorded repayment of ${enteredAmt.toLocaleString()} ${activeCurrency} and updated amortization ledger!`;
       setPaySuccess(msg);
       setPayAmount('');
       setTimeout(() => setPaySuccess(''), 4000);
@@ -87,7 +102,7 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
             {t('totalRemainingDebtCard')}
           </span>
           <div className="mt-2 text-2xl font-black text-slate-900">
-            {totalRemaining.toLocaleString()} {profile.currency}
+            {conv(totalRemaining).toLocaleString()} {activeCurrency}
           </div>
           <p className="text-xs text-slate-500 mt-1">
             {t('activeLoansCountCard')}: {activeLoans.length}
@@ -99,7 +114,7 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
             {t('monthlyEmiBurdenCard')}
           </span>
           <div className="mt-2 text-2xl font-black text-amber-600">
-            {totalEMI.toLocaleString()} {profile.currency}
+            {conv(totalEMI).toLocaleString()} {activeCurrency}
           </div>
           <p className="text-xs text-slate-500 mt-1">
             {t('monthlyFixedCostsGroup')}
@@ -168,14 +183,14 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
                       <div className="text-[10px] text-slate-400 capitalize">{loan.lenderType}</div>
                     </td>
                     <td className="px-3 py-2.5 text-right font-medium">
-                      {loan.principal.toLocaleString()} {profile.currency}
+                      {conv(loan.principal).toLocaleString()} {activeCurrency}
                     </td>
                     <td className="px-3 py-2.5 text-right">{loan.annualInterestRate}%</td>
                     <td className="px-3 py-2.5 text-right text-amber-600 font-bold">
-                      {loan.monthlyEMI.toLocaleString()} {profile.currency}
+                      {conv(loan.monthlyEMI).toLocaleString()} {activeCurrency}
                     </td>
                     <td className="px-3 py-2.5 text-right text-rose-600 font-black">
-                      {loan.remainingBalance.toLocaleString()} {profile.currency}
+                      {conv(loan.remainingBalance).toLocaleString()} {activeCurrency}
                     </td>
                     <td className="px-3 py-2.5">{loan.nextPaymentDate}</td>
                   </tr>
@@ -195,7 +210,7 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
                   type="number"
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
-                  placeholder={`${t('simMonthlyEmi')}: ${selectedLoan.monthlyEMI}`}
+                  placeholder={`${t('simMonthlyEmi')}: ${conv(selectedLoan.monthlyEMI).toLocaleString()} ${activeCurrency}`}
                   className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 flex-1"
                 />
                 <button
@@ -224,7 +239,7 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
             <div className="space-y-3">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  {t('principalTh')} ({profile.currency})
+                  {t('principalTh')} ({activeCurrency})
                 </label>
                 <input
                   type="number"
@@ -265,17 +280,17 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-xs text-indigo-900 font-medium">{t('simMonthlyEmi')}:</span>
               <span className="text-base font-black text-indigo-600">
-                {simResult.monthlyEMI.toLocaleString()} {profile.currency}
+                {simResult.monthlyEMI.toLocaleString()} {activeCurrency}
               </span>
             </div>
             <div className="flex items-center justify-between mt-1 text-[11px] text-slate-600">
               <span>{t('simTotalRepay')}:</span>
-              <span>{simResult.totalRepayment.toLocaleString()} {profile.currency}</span>
+              <span>{simResult.totalRepayment.toLocaleString()} {activeCurrency}</span>
             </div>
             <div className="flex items-center justify-between text-[11px] text-slate-600">
               <span>{t('simTotalInterest')}:</span>
               <span className="text-rose-600 font-semibold">
-                {simResult.totalInterest.toLocaleString()} {profile.currency}
+                {simResult.totalInterest.toLocaleString()} {activeCurrency}
               </span>
             </div>
           </div>
