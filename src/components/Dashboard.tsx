@@ -15,6 +15,7 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   Tooltip,
@@ -83,9 +84,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const isSurplus = finalProjectedBalance >= 0;
 
   const costBreakdownData = [
-    { name: t('fixedCostOption').slice(0, 14), amount: conv(metrics.totalFixedCosts), fill: '#6366f1' },
-    { name: t('variableCostOption').slice(0, 14), amount: conv(metrics.totalVariableCosts), fill: '#06b6d4' },
-    { name: t('tabLoans').slice(0, 14), amount: conv(metrics.monthlyLoanObligation), fill: '#f59e0b' },
+    {
+      name: currentLanguage === 'bn' ? 'ফিক্সড কস্ট' : currentLanguage === 'zh' ? '固定开销' : currentLanguage === 'hi' ? 'स्थिर लागत' : 'Fixed Cost',
+      amount: conv(metrics.totalFixedCosts),
+      fill: '#6366f1',
+    },
+    {
+      name: currentLanguage === 'bn' ? 'কাঁচামাল খরচ' : currentLanguage === 'zh' ? '可变材料' : currentLanguage === 'hi' ? 'कच्चा माल' : 'Variable Cost',
+      amount: conv(metrics.totalVariableCosts),
+      fill: '#06b6d4',
+    },
+    {
+      name: currentLanguage === 'bn' ? 'ঋণের কিস্তি' : currentLanguage === 'zh' ? '月供负债' : currentLanguage === 'hi' ? 'ऋण किस्त' : 'Loan & EMI',
+      amount: conv(metrics.monthlyLoanObligation),
+      fill: '#f59e0b',
+    },
   ];
 
   const highRiskDebtors = debtors.filter(
@@ -387,16 +400,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <p className="text-xs text-slate-500 mb-4">
               {t('costRatioDesc')}
             </p>
-            <div className="h-52 w-full">
+            <div className="h-56 w-full pt-1">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={costBreakdownData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                  <XAxis type="number" stroke="#94a3b8" fontSize={10} />
-                  <YAxis type="category" dataKey="name" stroke="#94a3b8" fontSize={10} width={90} />
+                <BarChart data={costBreakdownData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
+                  <YAxis
+                    stroke="#94a3b8"
+                    fontSize={10}
+                    tickFormatter={(val) => (val >= 1000 ? `${Math.round(val / 1000)}k` : val)}
+                  />
                   <Tooltip
                     formatter={(val: any) => [`${Number(val).toLocaleString()} ${activeCurrency}`, '']}
                   />
-                  <Bar dataKey="amount" radius={[0, 6, 6, 0]} />
+                  <Bar dataKey="amount" radius={[8, 8, 0, 0]} barSize={42}>
+                    {costBreakdownData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
