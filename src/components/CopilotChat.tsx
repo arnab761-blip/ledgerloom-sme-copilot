@@ -9,14 +9,14 @@ import {
   Zap,
   ArrowRight,
   ShieldCheck,
-  CheckCircle,
 } from 'lucide-react';
 import { AgentResponse } from '@/lib/agent-orchestrator';
+import { SupportedLanguage, getTranslation } from '@/lib/i18n';
 
 interface Message {
   id: string;
   sender: 'user' | 'assistant';
-  bengaliText: string;
+  primaryText: string;
   englishText?: string;
   toolUsed?: string;
   suggestedAction?: any;
@@ -25,31 +25,69 @@ interface Message {
 
 interface CopilotChatProps {
   onNavigateTab: (tab: string) => void;
+  currentLanguage: SupportedLanguage;
 }
 
-export const CopilotChat: React.FC<CopilotChatProps> = ({ onNavigateTab }) => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'init-1',
-      sender: 'assistant',
-      bengaliText: `আসসালামু আলাইকুম! আমি **LedgerLoom CFO Copilot**। 
-আপনার ব্যবসার আয়, ব্যয়, ফিক্সড কস্ট, বকেয়া টাকা এবং আগামী মাসের প্রফিট টার্গেটের যেকোনো হিসাবের জন্য প্রস্তুত। আমাকে যেকোনো প্রশ্ন করতে পারেন।`,
-      englishText: `Hello! I am LedgerLoom CFO Copilot. I analyze your business ledger, fixed costs, receivables, and reverse-engineer your profit targets with deterministic precision.`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    },
-  ]);
+export const CopilotChat: React.FC<CopilotChatProps> = ({
+  onNavigateTab,
+  currentLanguage,
+}) => {
+  const t = (key: string, params?: Record<string, string | number>) =>
+    getTranslation(currentLanguage, key, params);
 
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputQuery, setInputQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const quickPrompts = [
-    'গত মাসে লাভ বা ক্ষতি কত?',
-    'সামনের মাসে ২৫,০০০ টাকা লাভ করতে চাই, কি কি করতে হবে?',
-    'কার কাছে কত টাকা বাকি আছে?',
-    'ঋণ কত বাকি আছে এবং মাসিক কিস্তির হিসাব দাও',
-    'কোথায় সবচেয়ে বেশি খরচ হয়েছে?',
-  ];
+  // Initialize or re-initialize welcome message on language change if only welcome exists
+  useEffect(() => {
+    setMessages([
+      {
+        id: 'init-1',
+        sender: 'assistant',
+        primaryText: t('copilotWelcome'),
+        englishText:
+          currentLanguage !== 'en'
+            ? 'Hello! I am LedgerLoom CFO Copilot. I analyze your business ledger, fixed costs, receivables, and reverse-engineer your profit targets with deterministic precision.'
+            : undefined,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+  }, [currentLanguage]);
+
+  const quickPromptsByLang: Record<SupportedLanguage, string[]> = {
+    en: [
+      'Last month profit or loss breakdown?',
+      'I want to make 30,000 profit next month, what to do?',
+      'Who owes overdue money (>30k)?',
+      'How much debt is remaining and EMI?',
+      'Where did we spend the most overhead?',
+    ],
+    zh: [
+      '上月净利润与亏损明细如何？',
+      '下个月想要赚 30,000 净利润，需要做什么？',
+      '有哪些客户欠款超过 30,000 警戒线？',
+      '当前剩余贷款本金及月供是多少？',
+      '哪项成本开支占比最高？',
+    ],
+    bn: [
+      'গত মাসে লাভ বা ক্ষতি কত?',
+      'সামনের মাসে ২৫,০০০ টাকা লাভ করতে চাই, কি কি করতে হবে?',
+      'কার কাছে কত টাকা বাকি আছে (>৩০k)?',
+      'ঋণ কত বাকি আছে এবং মাসিক কিস্তির হিসাব দাও',
+      'কোথায় সবচেয়ে বেশি খরচ হয়েছে?',
+    ],
+    hi: [
+      'पिछले महीने का लाभ या हानि विवरण क्या है?',
+      'अगले महीने 30,000 लाभ कमाने के लिए क्या करें?',
+      'किन ग्राहकों का 30,000 से अधिक बकाया है?',
+      'कुल कितना ऋण बाकी है और मासिक किस्त?',
+      'सबसे ज्यादा खर्च किस मद में हुआ?',
+    ],
+  };
+
+  const quickPrompts = quickPromptsByLang[currentLanguage] || quickPromptsByLang.en;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -66,7 +104,7 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({ onNavigateTab }) => {
     const userMsg: Message = {
       id: `usr-${Date.now()}`,
       sender: 'user',
-      bengaliText: q,
+      primaryText: q,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
@@ -78,7 +116,7 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({ onNavigateTab }) => {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q }),
+        body: JSON.stringify({ query: q, language: currentLanguage }),
       });
       const data: AgentResponse & { success: boolean } = await res.json();
 
@@ -86,7 +124,7 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({ onNavigateTab }) => {
         const botMsg: Message = {
           id: `bot-${Date.now()}`,
           sender: 'assistant',
-          bengaliText: data.answerBengali,
+          primaryText: data.answerPrimary,
           englishText: data.answerEnglish,
           toolUsed: data.executedTool,
           suggestedAction: data.suggestedAction,
@@ -102,8 +140,14 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({ onNavigateTab }) => {
         {
           id: `bot-err-${Date.now()}`,
           sender: 'assistant',
-          bengaliText:
-            'দুঃখিত, কোনো একটি ত্রুটি ঘটেছে। দয়া করে পুনরায় প্রশ্নটি করুন অথবা ডিটারমিনিস্টিক ক্যালকুলেটর ট্যাবগুলো ব্যবহার করুন।',
+          primaryText:
+            currentLanguage === 'zh'
+              ? '抱歉，执行出现异常，请重试或直接查看计算器标签页。'
+              : currentLanguage === 'bn'
+              ? 'দুঃখিত, কোনো একটি ত্রুটি ঘটেছে। দয়া করে পুনরায় প্রশ্নটি করুন।'
+              : currentLanguage === 'hi'
+              ? 'क्षमा करें, एक त्रुटि हुई है। कृपया पुनः प्रयास करें।'
+              : 'Sorry, an error occurred. Please try again.',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -129,7 +173,7 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({ onNavigateTab }) => {
               </span>
             </div>
             <p className="text-[11px] text-slate-400">
-              Bilingual (বাংলা ও ইংরেজি) • Zero-Hallucination Math Engine
+              Multilingual (English • 中文 • বাংলা • हिन्दी) • Zero-Hallucination Math
             </p>
           </div>
         </div>
@@ -172,11 +216,11 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({ onNavigateTab }) => {
                 </div>
               )}
 
-              {/* Bengali response */}
-              <div className="whitespace-pre-line font-sans text-slate-900">{m.bengaliText}</div>
+              {/* Primary response in selected language */}
+              <div className="whitespace-pre-line font-sans text-slate-900">{m.primaryText}</div>
 
-              {/* English summary for international competition judges */}
-              {m.englishText && m.englishText !== m.bengaliText && (
+              {/* English summary for international competition judges (if primary is not English) */}
+              {m.englishText && m.englishText !== m.primaryText && currentLanguage !== 'en' && (
                 <div className="pt-2 mt-2 border-t border-slate-100 text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-lg font-sans">
                   <div className="font-semibold text-slate-500 uppercase tracking-wider text-[9px] mb-1">
                     English Summary (For International Judges)
@@ -196,7 +240,7 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({ onNavigateTab }) => {
                     }}
                     className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] flex items-center gap-1.5 transition shadow"
                   >
-                    <span>{m.suggestedAction.labelBengali}</span>
+                    <span>{m.suggestedAction.label || m.suggestedAction.labelEnglish}</span>
                     <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
@@ -220,7 +264,7 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({ onNavigateTab }) => {
             </div>
             <div className="p-3.5 bg-white border border-slate-200 rounded-2xl rounded-tl-none shadow-sm text-xs text-slate-500 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-indigo-600 animate-spin" />
-              <span>এক্সেলে সূত্র ও ক্যালকুলেটর ইঞ্জিন এক্সিকিউট হচ্ছে...</span>
+              <span>Executing deterministic math and Excel ledger rules...</span>
             </div>
           </div>
         )}
@@ -231,7 +275,7 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({ onNavigateTab }) => {
       {/* Quick Prompts Bar */}
       <div className="px-4 py-2 bg-slate-100/80 border-t border-slate-200 flex items-center gap-2 overflow-x-auto scrollbar-none">
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
-          দ্রুত প্রশ্ন:
+          {t('quickQuestions')}
         </span>
         {quickPrompts.map((p, idx) => (
           <button
@@ -257,7 +301,7 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({ onNavigateTab }) => {
             type="text"
             value={inputQuery}
             onChange={(e) => setInputQuery(e.target.value)}
-            placeholder="আপনার প্রশ্ন বা টাস্ক লিখুন (যেমন: আগামী মাসে ৩০,০০০ টাকা লাভ করতে কত কাপড় লাগবে?)..."
+            placeholder={t('copilotPlaceholder')}
             className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <button
@@ -266,7 +310,7 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({ onNavigateTab }) => {
             className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow"
           >
             <Send className="w-3.5 h-3.5" />
-            পাঠান
+            {t('sendBtn')}
           </button>
         </form>
       </div>

@@ -18,11 +18,27 @@ import {
   AuditLogEntry,
   FinancialHealthMetrics,
 } from '@/lib/types';
+import { SupportedLanguage } from '@/lib/i18n';
 
 export default function HomePage() {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
+
+  // Multi-language state (Default: English for international track, easily switchable to Chinese, Bengali, Hindi)
+  const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>('en');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('ledgerloom_lang') as SupportedLanguage | null;
+    if (saved && (saved === 'en' || saved === 'zh' || saved === 'bn' || saved === 'hi')) {
+      setCurrentLanguage(saved);
+    }
+  }, []);
+
+  const handleChangeLanguage = (lang: SupportedLanguage) => {
+    setCurrentLanguage(lang);
+    localStorage.setItem('ledgerloom_lang', lang);
+  };
 
   // Security Session State (30-Minute Sliding Lock)
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -272,6 +288,8 @@ export default function HomePage() {
         setActiveTab={setActiveTab}
         pendingApprovalsCount={pendingApprovalsCount}
         onRefreshData={loadFinancialData}
+        currentLanguage={currentLanguage}
+        onChangeLanguage={handleChangeLanguage}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -282,6 +300,7 @@ export default function HomePage() {
             debtors={debtors}
             loans={loans}
             onNavigateTab={setActiveTab}
+            currentLanguage={currentLanguage}
           />
         )}
 
@@ -332,7 +351,12 @@ export default function HomePage() {
 
         {activeTab === 'goal_planner' && <TargetProfitPlanner profile={profile} />}
 
-        {activeTab === 'copilot' && <CopilotChat onNavigateTab={setActiveTab} />}
+        {activeTab === 'copilot' && (
+          <CopilotChat
+            onNavigateTab={setActiveTab}
+            currentLanguage={currentLanguage}
+          />
+        )}
 
         {activeTab === 'audit' && (
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">

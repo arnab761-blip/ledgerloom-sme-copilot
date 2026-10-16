@@ -3,7 +3,7 @@ import { AgentOrchestrator } from '@/lib/agent-orchestrator';
 
 export async function POST(req: Request) {
   try {
-    const { query, apiKey } = await req.json();
+    const { query, apiKey, language } = await req.json();
 
     if (!query || typeof query !== 'string') {
       return NextResponse.json(
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const response = await AgentOrchestrator.processQuery(query, apiKey);
+    const response = await AgentOrchestrator.processQuery(query, apiKey, language || 'en');
     return NextResponse.json({ success: true, ...response });
   } catch (err: any) {
     return NextResponse.json(

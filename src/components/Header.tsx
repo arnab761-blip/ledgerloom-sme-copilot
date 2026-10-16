@@ -1,7 +1,19 @@
 'use client';
 
-import React from 'react';
-import { Lock, Unlock, Download, ShieldCheck, Cpu } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import {
+  Lock,
+  Unlock,
+  Download,
+  Upload,
+  Globe,
+  ChevronDown,
+} from 'lucide-react';
+import {
+  SupportedLanguage,
+  SUPPORTED_LANGUAGES,
+  getTranslation,
+} from '@/lib/i18n';
 
 interface HeaderProps {
   isUnlocked: boolean;
@@ -11,6 +23,8 @@ interface HeaderProps {
   setActiveTab: (tab: string) => void;
   pendingApprovalsCount: number;
   onRefreshData?: () => void;
+  currentLanguage: SupportedLanguage;
+  onChangeLanguage: (lang: SupportedLanguage) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -21,9 +35,15 @@ export const Header: React.FC<HeaderProps> = ({
   setActiveTab,
   pendingApprovalsCount,
   onRefreshData,
+  currentLanguage,
+  onChangeLanguage,
 }) => {
-  const [uploading, setUploading] = React.useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const t = (key: string, params?: Record<string, string | number>) =>
+    getTranslation(currentLanguage, key, params);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -40,32 +60,37 @@ export const Header: React.FC<HeaderProps> = ({
       });
       const data = await res.json();
       if (data.success) {
-        alert('✅ এক্সেল ফাইল সফলভাবে সিঙ্ক হয়েছে!');
+        alert('✅ ' + (data.message || 'Excel synced!'));
         if (onRefreshData) onRefreshData();
       } else {
-        alert('❌ এরর: ' + data.error);
+        alert('❌ Error: ' + data.error);
       }
     } catch {
-      alert('❌ আপলোড করতে সমস্যা হয়েছে!');
+      alert('❌ Upload failed!');
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
+
   const tabs = [
-    { id: 'dashboard', label: '📊 Dashboard' },
-    { id: 'data_entry', label: '📝 Data Entry & Excel Sync' },
+    { id: 'dashboard', label: t('tabDashboard') },
+    { id: 'data_entry', label: t('tabDataEntry') },
     {
       id: 'staging',
-      label: '📸 Receipt OCR & Staging',
+      label: t('tabStaging'),
       badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined,
     },
-    { id: 'debtors', label: '⚠️ Debtors Alert (>30k)' },
-    { id: 'loans', label: '🏦 Loan Reconcile' },
-    { id: 'goal_planner', label: '🎯 Target Profit Plan' },
-    { id: 'copilot', label: '🤖 AI CFO Copilot' },
-    { id: 'audit', label: '🛡️ Security Audit Log' },
+    { id: 'debtors', label: t('tabDebtors') },
+    { id: 'loans', label: t('tabLoans') },
+    { id: 'goal_planner', label: t('tabGoalPlanner') },
+    { id: 'copilot', label: t('tabCopilot') },
+    { id: 'audit', label: t('tabAudit') },
   ];
+
+  const currentLangObj =
+    SUPPORTED_LANGUAGES.find((l) => l.code === currentLanguage) ||
+    SUPPORTED_LANGUAGES[0];
 
   return (
     <header className="sticky top-0 z-40 bg-slate-900 text-white shadow-xl border-b border-slate-800">
@@ -79,20 +104,61 @@ export const Header: React.FC<HeaderProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                  LedgerLoom
+                  {t('appTitle')}
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
-                    SME Copilot
+                    {t('appBadge')}
                   </span>
                 </h1>
               </div>
               <p className="text-xs text-slate-400">
-                2026 8th FinTechathon (WeBank) • Topic E: Autonomous SME Finance Participant
+                {t('competitionTrack')}
               </p>
             </div>
           </div>
 
-          {/* Quick Actions & Security Status */}
-          <div className="flex items-center gap-3">
+          {/* Quick Actions, Language Switcher & Security Status */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Language Selector Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition shadow-sm"
+                title="Change Language"
+              >
+                <Globe className="w-3.5 h-3.5 text-indigo-400" />
+                <span>{currentLangObj.flag} {currentLangObj.name}</span>
+                <ChevronDown className="w-3 h-3 text-slate-400" />
+              </button>
+
+              {isLangMenuOpen && (
+                <div className="absolute right-0 mt-1 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95">
+                  <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-700/60">
+                    Select Language / 语言设置
+                  </div>
+                  {SUPPORTED_LANGUAGES.map((l) => (
+                    <button
+                      key={l.code}
+                      onClick={() => {
+                        onChangeLanguage(l.code);
+                        setIsLangMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-700/80 transition ${
+                        currentLanguage === l.code
+                          ? 'text-indigo-400 font-bold bg-slate-700/50'
+                          : 'text-slate-300'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>{l.flag}</span>
+                        <span>{l.nativeName}</span>
+                      </span>
+                      {currentLanguage === l.code && <span className="text-emerald-400 font-bold">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Hidden File Input for Excel Upload */}
             <input
               type="file"
@@ -110,7 +176,7 @@ export const Header: React.FC<HeaderProps> = ({
               title="Upload modified Excel file directly"
             >
               <Upload className="w-3.5 h-3.5" />
-              {uploading ? 'সিঙ্ক হচ্ছে...' : 'Upload .XLSX'}
+              {uploading ? t('syncing') : t('uploadExcel')}
             </button>
 
             {/* Download Excel */}
@@ -121,7 +187,7 @@ export const Header: React.FC<HeaderProps> = ({
               title="Download actual Excel workbook"
             >
               <Download className="w-3.5 h-3.5" />
-              Download .XLSX
+              {t('downloadExcel')}
             </a>
 
             {/* 30-min Security Vault Pill */}
@@ -136,12 +202,14 @@ export const Header: React.FC<HeaderProps> = ({
               {isUnlocked ? (
                 <>
                   <Unlock className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Vault Unlocked ({remainingMinutes}m)</span>
+                  <span>
+                    {t('vaultUnlocked')} ({remainingMinutes}{t('remainingMin')})
+                  </span>
                 </>
               ) : (
                 <>
                   <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Vault Locked (Click to Unlock)</span>
+                  <span>{t('vaultLocked')}</span>
                 </>
               )}
             </button>
