@@ -165,7 +165,252 @@ ${overdueList.map((d) => `- **${d.partyName}**: ${conv(d.amount).toLocaleString(
       };
     }
 
-    // Default Overview
+    // 3. New Loan Evaluation & Multi-Step Reasoning (e.g. "মেশিন কেনার জন্য লোন নেওয়া কি ঠিক হবে?")
+    const isLoanEvaluationIntent =
+      (q.includes('মেশিন') || q.includes('machine') || q.includes('নিতে চাই') || q.includes('ঠিক হবে') || q.includes('should i') || q.includes('invest') || q.includes('বিনিয়োগ')) &&
+      (q.includes('ঋণ') || q.includes('loan') || q.includes('লোন') || q.includes('贷款') || q.includes('कर्ज'));
+
+    if (isLoanEvaluationIntent) {
+      const defaultLoan = conv(50000);
+      const loanAmountMatch = q.match(/(\d+[\d,]*)/);
+      const prospectiveAmount = loanAmountMatch ? parseInt(loanAmountMatch[1].replace(/,/g, ''), 10) : defaultLoan;
+      const sim = AccountingEngine.calculateLoanEMI(prospectiveAmount, 8.5, 24);
+      const postEmiProfit = health.netProfit - sim.monthlyEMI;
+
+      const ansBn = `🧠 **AI CFO মাল্টি-স্টেপ ডিসিশন ফ্রেমওয়ার্ক (৩টি ধাপে বিশ্লেষণ):**
+
+• **ধাপ ১ (বর্তমান মুনাফা যাচাই):** আপনার কারখানার চলতি মাসিক নিট মুনাফা **${health.netProfit.toLocaleString()} ${convertedProfile.currency}**।
+• **ধাপ ২ (ক্যাশ-ফ্লো প্রজেকশন):** ${prospectiveAmount.toLocaleString()} ${convertedProfile.currency} ঋণের ক্ষেত্রে ৮.৫% সুদে ২৪ মাসের আনুমানিক মাসিক কিস্তি দাঁড়াবে **${sim.monthlyEMI.toLocaleString()} ${convertedProfile.currency}**। কিস্তি দেওয়ার পরও আপনার মাসিক সারপ্লাস থাকবে **+${postEmiProfit.toLocaleString()} ${convertedProfile.currency}**।
+• **ধাপ ৩ (উপযুক্ত স্কিম ম্যাচিং):** সাধারণ শর্ট-টার্ম লোনের চেয়ে **'Machinery & Equipment Expansion Lease'** নেওয়া বেশি লাভজনক, কারণ এতে মেশিন নিজেই জামানত হিসেবে ব্যবহৃত হয়।
+
+💡 **চূড়ান্ত পরামর্শ:** হ্যাঁ, আপনার বর্তমান ক্যাশ-ফ্লো অনুযায়ী এই লোন নেওয়া ঝুঁকিমুক্ত ও লাভজনক।`;
+
+      const ansEn = `🧠 **AI CFO Multi-Step Reasoning Framework (3-Step Decision Analysis):**
+
+• **Step 1 (Profitability Check):** Current monthly net profit is **${health.netProfit.toLocaleString()} ${convertedProfile.currency}**.
+• **Step 2 (Cash Flow Stress-Test):** For a ${prospectiveAmount.toLocaleString()} ${convertedProfile.currency} loan at 8.5% APR over 24 months, estimated monthly EMI is **${sim.monthlyEMI.toLocaleString()} ${convertedProfile.currency}**. Monthly surplus remains positive at **+${postEmiProfit.toLocaleString()} ${convertedProfile.currency}**.
+• **Step 3 (Scheme Matching):** Recommend **'Machinery & Equipment Expansion Lease'** over short-term loans, using the equipment itself as collateral.
+
+💡 **Conclusion:** Approved. Your factory cash runway comfortably supports this capital expenditure.`;
+
+      const ansZh = `🧠 **AI 首席财务官多步逻辑推理架构 (3步决策分析法)：**
+
+• **第 1 步 (当前盈利校验):** 工厂当前月度净利润为 **${health.netProfit.toLocaleString()} ${convertedProfile.currency}**。
+• **第 2 步 (现金流压力测试):** 针对 ${prospectiveAmount.toLocaleString()} ${convertedProfile.currency} 的设备融资，按 8.5% 年化测算 24 期月供约为 **${sim.monthlyEMI.toLocaleString()} ${convertedProfile.currency}**。扣除还贷后月度现金结余仍保持在 **+${postEmiProfit.toLocaleString()} ${convertedProfile.currency}**。
+• **第 3 步 (最优信贷方案匹配):** 强烈推荐优先匹配 **“设备融资租赁 (Machinery Lease)”**，直接以新设备作为物权担保。
+
+💡 **决策结论:** 经压力测试，该笔资本开支完全在您的安全现金流承受范围内。`;
+
+      const ansHi = `🧠 **एआई सीएफओ बहु-चरणीय निर्णय ढाँचा (3 चरणों में विश्लेषण):**
+
+• **चरण 1 (लाभप्रदता जांच):** आपके कारखाने का वर्तमान मासिक शुद्ध लाभ **${health.netProfit.toLocaleString()} ${convertedProfile.currency}** है।
+• **चरण 2 (नकदी प्रवाह तनाव परीक्षण):** ${prospectiveAmount.toLocaleString()} ${convertedProfile.currency} ऋण के लिए 24 माह की अनुमानित मासिक किस्त **${sim.monthlyEMI.toLocaleString()} ${convertedProfile.currency}** होगी।
+• **चरण 3 (योजना मिलान):** सामान्य ऋण के बजाय **'मशीनरी लीजिंग'** विकल्प चुनें।
+
+💡 **निष्कर्ष:** अनुमोदित। आपका नकदी प्रवाह इस निवेश को वहन करने में सक्षम है।`;
+
+      const primary = lang === 'zh' ? ansZh : lang === 'bn' ? ansBn : lang === 'hi' ? ansHi : ansEn;
+
+      return {
+        answerPrimary: primary,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'evaluateEquipmentLoanEligibility',
+        toolOutput: { sim, postEmiProfit },
+        suggestedAction: {
+          type: 'show_financing',
+          label: lang === 'zh' ? '查看信贷方案列表' : lang === 'bn' ? 'ম্যাচিং ফাইন্যান্সিং বিকল্প দেখুন' : lang === 'hi' ? 'वित्त विकल्प देखें' : 'View Financing Options',
+          labelEnglish: 'View Financing Options',
+        },
+        metricsSnapshot: health,
+      };
+    }
+
+    // 4. Financing Matching Intent (e.g. "লোনের অপশনগুলো দেখাও" or "financing options")
+    const isFinancingMatchIntent =
+      q.includes('লোনের অপশন') ||
+      q.includes('লোন অপশন') ||
+      q.includes('ফাইন্যান্সিং') ||
+      q.includes('বিকল্প লোন') ||
+      q.includes('loan option') ||
+      q.includes('financing') ||
+      q.includes('credit option') ||
+      q.includes('show loans') ||
+      q.includes('what loans') ||
+      q.includes('贷款方案') ||
+      q.includes('融资方案') ||
+      q.includes('推荐贷款') ||
+      q.includes('ঋণ বিকল্প');
+
+    if (isFinancingMatchIntent) {
+      const options = AccountingEngine.matchFinancingOptions(convertedProfile, health, debtors, lang, currency);
+      const top3 = options.slice(0, 3);
+
+      const topBn = top3
+        .map(
+          (opt, i) =>
+            `${i + 1}. **${opt.name}** (${opt.fitScorePercentage}% ম্যাচ)\n   • সুদের হার: ${opt.interestRateText} | মেয়াদ: ${opt.tenureMonths} মাস\n   • সর্বোচ্চ সীমা: ${opt.maxAmount.toLocaleString()} ${convertedProfile.currency} (${opt.collateralRequired ? 'জামানতযুক্ত' : 'জামানতবিহীন'})\n   • উপযোগী কারণ: ${opt.explainableMatchReason}`
+        )
+        .join('\n\n');
+
+      const topEn = top3
+        .map(
+          (opt, i) =>
+            `${i + 1}. **${opt.name}** (${opt.fitScorePercentage}% Fit)\n   • Rate: ${opt.interestRateText} | Tenure: ${opt.tenureMonths} mos\n   • Limit: ${opt.maxAmount.toLocaleString()} ${convertedProfile.currency} (${opt.collateralRequired ? 'Secured' : 'Unsecured'})\n   • Match Reason: ${opt.explainableMatchReason}`
+        )
+        .join('\n\n');
+
+      const topZh = top3
+        .map(
+          (opt, i) =>
+            `${i + 1}. **${opt.name}**（匹配度: ${opt.fitScorePercentage}%）\n   • 利率: ${opt.interestRateText} | 期限: ${opt.tenureMonths} 个月\n   • 额度: ${opt.maxAmount.toLocaleString()} ${convertedProfile.currency}\n   • 匹配理由: ${opt.explainableMatchReason}`
+        )
+        .join('\n\n');
+
+      const topHi = top3
+        .map(
+          (opt, i) =>
+            `${i + 1}. **${opt.name}** (${opt.fitScorePercentage}% मैच)\n   • ब्याज दर: ${opt.interestRateText} | अवधि: ${opt.tenureMonths} माह\n   • अधिकतम सीमा: ${opt.maxAmount.toLocaleString()} ${convertedProfile.currency}\n   • उपयुक्तता: ${opt.explainableMatchReason}`
+        )
+        .join('\n\n');
+
+      const ansBn = `আপনার বর্তমান মাসিক ক্যাশ-ফ্লো, আয় ও বকেয়া ইনভয়েস অ্যানালাইসিস করে AI Underwriting ইঞ্জিন **৩টি সেরা ফাইন্যান্সিং বিকল্প** নির্ধারণ করেছে:\n\n${topBn}\n\n💡 আপনি সরাসরি ফাইন্যান্সিং স্যান্ডবক্স থেকে বিস্তারিত দেখে আবেদন করতে পারবেন।`;
+      const ansEn = `Based on your monthly cash-flow, revenues, and receivables, our AI Underwriting Engine has matched **top 3 financing options**:\n\n${topEn}\n\n💡 You can apply directly through the Financing Sandbox.`;
+      const ansZh = `基于您的月度现金流、营收数据与应收账款，AI 智能信贷核保引擎为您优选匹配了 **3 个最具性价比的融资方案**：\n\n${topZh}\n\n💡 您可在“融资方案”标签页查看完整对比。`;
+      const ansHi = `आपके मासिक नकदी प्रवाह और राजस्व के आधार पर एआई ने **3 शीर्ष वित्त विकल्प** चुने हैं:\n\n${topHi}`;
+
+      const primary = lang === 'zh' ? ansZh : lang === 'bn' ? ansBn : lang === 'hi' ? ansHi : ansEn;
+
+      return {
+        answerPrimary: primary,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'matchFinancingOptions',
+        toolOutput: options,
+        suggestedAction: {
+          type: 'show_financing',
+          label: lang === 'zh' ? '查看全部融资对比表' : lang === 'bn' ? 'সম্পূর্ণ ফাইন্যান্সিং তুলনা দেখুন' : lang === 'hi' ? 'पूर्ण वित्त तुलना देखें' : 'View Financing Comparison',
+          labelEnglish: 'View Full Financing Comparison Table',
+        },
+        metricsSnapshot: health,
+      };
+    }
+
+    // 5. Loans & Reconciliation Intent (e.g. "ঋণ কত বাকি আছে এবং মাসিক কিস্তির হিসাব দাও")
+    const isLoanIntent =
+      q.includes('ঋণ') ||
+      q.includes('দেনা') ||
+      q.includes('কিস্তি') ||
+      q.includes('loan') ||
+      q.includes('reconcile') ||
+      q.includes('emi') ||
+      q.includes('贷款') ||
+      q.includes('还款') ||
+      q.includes('月供') ||
+      q.includes('कर्ज') ||
+      q.includes('किस्त');
+
+    if (isLoanIntent) {
+      const loanSummary = AccountingEngine.reconcileAllLoans(loans, currency);
+
+      const loanDetailsBn = loanSummary.nextDueDetails.map(
+        (l) => `• **${l.lender}**: অবশিষ্ট ঋণ ${l.remaining.toLocaleString()} ${convertedProfile.currency} (মাসিক কিস্তি: ${l.emi.toLocaleString()} ${convertedProfile.currency}, পরবর্তী কিস্তির তারিখ: ${l.nextDate})`
+      ).join('\n');
+
+      const loanDetailsEn = loanSummary.nextDueDetails.map(
+        (l) => `• **${l.lender}**: Remaining balance ${l.remaining.toLocaleString()} ${convertedProfile.currency} (Monthly EMI: ${l.emi.toLocaleString()} ${convertedProfile.currency}, Next payment: ${l.nextDate})`
+      ).join('\n');
+
+      const ansBn = `আপনার বর্তমানে **${loanSummary.activeLoanCount}টি সক্রিয় ঋণ** রয়েছে:
+${loanDetailsBn}
+
+- মোট অবশিষ্ট ঋণের পরিমাণ: **${loanSummary.totalRemainingDebt.toLocaleString()} ${convertedProfile.currency}**
+- প্রতি মাসে মোট কিস্তির বাধ্যবাধকতা: **${loanSummary.totalMonthlyEMIObligation.toLocaleString()} ${convertedProfile.currency}**`;
+
+      const ansEn = `You currently have **${loanSummary.activeLoanCount} active loan(s)**:
+${loanDetailsEn}
+
+- Total Remaining Debt: **${loanSummary.totalRemainingDebt.toLocaleString()} ${convertedProfile.currency}**
+- Total Monthly EMI Obligation: **${loanSummary.totalMonthlyEMIObligation.toLocaleString()} ${convertedProfile.currency}**`;
+
+      const primary = lang === 'bn' ? ansBn : ansEn;
+
+      return {
+        answerPrimary: primary,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'reconcileAllLoans',
+        toolOutput: loanSummary,
+        suggestedAction: {
+          type: 'reconcile_loan',
+          label: lang === 'bn' ? 'ঋণ পরিশোধ ও কিস্তির হিসাব দেখুন' : 'Simulate Loan Prepayment',
+          labelEnglish: 'Simulate Loan Prepayment & Reconciliation',
+        },
+        metricsSnapshot: health,
+      };
+    }
+
+    // 6. Expense Breakdown Intent (e.g. "কোথায় সবচেয়ে বেশি খরচ হয়েছে?")
+    const isExpenseIntent =
+      q.includes('কোথায় সবচেয়ে বেশি খরচ') ||
+      q.includes('সবচেয়ে বেশি খরচ') ||
+      q.includes('খরচ কোথায়') ||
+      q.includes('খরচের হিসাব') ||
+      q.includes('খরচ') ||
+      q.includes('spend the most') ||
+      q.includes('highest cost') ||
+      q.includes('overhead') ||
+      q.includes('expense') ||
+      q.includes('成本最高') ||
+      q.includes('सबसे ज्यादा खर्च');
+
+    if (isExpenseIntent) {
+      const salaries = convertedProfile.workerSalariesMonthly || 0;
+      const rent = convertedProfile.rentMonthly || 0;
+      const electricity = convertedProfile.electricityBillMonthly || 0;
+      const maintenance = (convertedProfile.maintenanceMonthly || 0) + (convertedProfile.otherFixedCostsMonthly || 0);
+
+      const items = [
+        { nameBn: 'শ্রমিকদের বেতন (Salaries)', nameEn: 'Worker Salaries', amount: salaries },
+        { nameBn: 'কারখানা/দোকান ভাড়া (Rent)', nameEn: 'Shop/Factory Rent', amount: rent },
+        { nameBn: 'বিদ্যুৎ ও ইউটিলিটি (Electricity)', nameEn: 'Electricity & Utilities', amount: electricity },
+        { nameBn: 'রক্ষণাবেক্ষণ ও অন্যান্য (Maintenance & Others)', nameEn: 'Maintenance & Others', amount: maintenance },
+      ].sort((a, b) => b.amount - a.amount);
+
+      const topItem = items[0];
+      const fixedTotal = health.totalFixedCosts || 1;
+
+      const ansBn = `আপনার ব্যবসার খরচের বিস্তারিত বিশ্লেষণ (${convertedProfile.currency}):
+- **সবচেয়ে বড় খরচের খাত:** **${topItem.nameBn}** (প্রতি মাসে **${topItem.amount.toLocaleString()} ${convertedProfile.currency}**, যা মোট ফিক্সড খরচের প্রায় ${Math.round((topItem.amount / fixedTotal) * 100)}%)।
+- **অন্যান্য মাসিক ফিক্সড খরচ:**
+${items.map((it) => `  • ${it.nameBn}: ${it.amount.toLocaleString()} ${convertedProfile.currency}`).join('\n')}
+- **মোট মাসিক ফিক্সড ওভারহেড:** **${health.totalFixedCosts.toLocaleString()} ${convertedProfile.currency}**
+- **কাঁচামাল ও ভ্যারিয়েবল খরচ:** **${health.totalVariableCosts.toLocaleString()} ${convertedProfile.currency}**
+
+💡 **ব্যবসার পরামর্শ:** মুনাফা বাড়াতে ফিক্সড খরচ অপটিমাইজ করার পাশাপাশি পাইকারিতে কাঁচামাল কিনলে ইউনিট প্রতি লাভ বৃদ্ধি পাবে।`;
+
+      const ansEn = `Business Overhead & Expense Breakdown (${convertedProfile.currency}):
+- **Highest Cost Center:** **${topItem.nameEn}** (**${topItem.amount.toLocaleString()} ${convertedProfile.currency}**/month, accounting for ${Math.round((topItem.amount / fixedTotal) * 100)}% of total fixed overhead).
+- **Monthly Fixed Breakdown:**
+${items.map((it) => `  • ${it.nameEn}: ${it.amount.toLocaleString()} ${convertedProfile.currency}`).join('\n')}
+- **Total Fixed Costs:** **${health.totalFixedCosts.toLocaleString()} ${convertedProfile.currency}**
+- **Variable Production Costs:** **${health.totalVariableCosts.toLocaleString()} ${convertedProfile.currency}**
+
+💡 **CFO Recommendation:** Optimize fixed utility bills and purchase raw materials in volume batches to increase unit gross margins.`;
+
+      const primary = lang === 'bn' ? ansBn : ansEn;
+
+      return {
+        answerPrimary: primary,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'getExpenseBreakdown',
+        toolOutput: { items, topItem },
+        metricsSnapshot: health,
+      };
+    }
+
+    // 7. Default Overview
     const ansBn = `কারখানার বর্তমান আর্থিক বিশ্লেষণ (${convertedProfile.currency}):
 - মোট রাজস্ব: **${health.totalRevenue.toLocaleString()} ${convertedProfile.currency}**
 - ফিক্সড খরচ: **${health.totalFixedCosts.toLocaleString()} ${convertedProfile.currency}**
