@@ -33,9 +33,19 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     tabStaging: '📸 Receipt OCR & Staging',
     tabDebtors: '⚠️ Debtors Alert (>30k)',
     tabLoans: '🏦 Loan Reconcile',
+    tabFinancing: '💳 Financing Matcher',
     tabGoalPlanner: '🎯 Target Profit Plan',
     tabCopilot: '🤖 AI CFO Copilot',
     tabAudit: '🛡️ Security Audit Log',
+
+    // Financing Matcher
+    financingTitle: 'SME Financing & Credit Option Matcher',
+    financingDesc: 'Automated underwriting & option matching tailored to your monthly cash flow, turnover, and unpaid invoices.',
+    matchScoreLabel: 'Match Fit',
+    applySandboxBtn: 'Apply in Bank Sandbox',
+    noCollateralBadge: 'No Collateral Required',
+    collateralBadge: 'Equipment Lien',
+    instantScoring: 'Instant Digital Scoring',
 
     // Dashboard
     bannerSync: 'Real-time Excel Engine Synchronized',
@@ -185,9 +195,19 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     tabStaging: '📸 票据扫描与待审',
     tabDebtors: '⚠️ 应收账款预警 (>3万)',
     tabLoans: '🏦 贷款对账与还款',
+    tabFinancing: '💳 智能信贷匹配',
     tabGoalPlanner: '🎯 目标利润反推求解',
     tabCopilot: '🤖 AI 首席财务官 (CFO)',
     tabAudit: '🛡️ 合规安全审计日志',
+
+    // Financing Matcher
+    financingTitle: '中小企业智能信贷与融资方案匹配器',
+    financingDesc: '基于工厂实时现金流、营业额与未结发票的自动化授信模型及方案优选。',
+    matchScoreLabel: '匹配度',
+    applySandboxBtn: '申请接入数字银行沙盒',
+    noCollateralBadge: '纯信用无担保',
+    collateralBadge: '设备物权抵押',
+    instantScoring: '即时数字智能风控审批',
 
     // Dashboard
     bannerSync: 'Excel 数据库实时双向同步就绪',
@@ -337,9 +357,19 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     tabStaging: '📸 মেমো স্ক্যান ও পেন্ডিং স্টেজ',
     tabDebtors: '⚠️ বাকি টাকা অ্যালার্ট (>৩০k)',
     tabLoans: '🏦 ঋণ ও কিস্তি মিলানো',
+    tabFinancing: '💳 লোন অপশন ম্যাচিং',
     tabGoalPlanner: '🎯 টার্গেট প্রফিট প্ল্যান',
     tabCopilot: '🤖 এআই সিএফও কোপাইলট',
     tabAudit: '🛡️ সিকিউরিটি অডিট লগ',
+
+    // Financing Matcher
+    financingTitle: 'এসএমই লোন ও ফাইন্যান্সিং অপশন ম্যাচিং ইঞ্জিন',
+    financingDesc: 'কারখানার ক্যাশ-ফ্লো, মাসিক টার্নওভার ও বকেয়া ইনভয়েসের উপর ভিত্তি করে সর্বোত্তম লোন স্কিম ম্যাচিং।',
+    matchScoreLabel: 'ম্যাচ স্কোর',
+    applySandboxBtn: 'ব্যাংক স্যান্ডবক্সে আবেদন করুন',
+    noCollateralBadge: 'জামানতবিহীন ঋণ',
+    collateralBadge: 'যন্ত্রপাতি জামানত',
+    instantScoring: 'তাত্ক্ষণিক ডিজিটাল অনুমোদন',
 
     // Dashboard
     bannerSync: 'রিয়েল-টাইম এক্সেল ইঞ্জিন সিঙ্ক্রোনাইজড',
@@ -489,6 +519,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     tabStaging: '📸 बिल स्कैनिंग व अनुमोदन',
     tabDebtors: '⚠️ बकाया राशि अलर्ट (>30k)',
     tabLoans: '🏦 ऋण मिलान व किस्त',
+    tabFinancing: '💳 वित्त विकल्प मिलान',
     tabGoalPlanner: '🎯 लक्ष्य लाभ योजना',
     tabCopilot: '🤖 एआई सीएफओ कोपायलट',
     tabAudit: '🛡️ सुरक्षा ऑडिट लॉग',

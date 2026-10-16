@@ -25,6 +25,8 @@ export const TargetProfitPlanner: React.FC<GoalPlannerProps> = ({ profile }) => 
   const targetAmount = Math.max(1000, Number(targetProfitInput) || 1000);
   const plan: TargetProfitPlan = AccountingEngine.solveTargetProfit(profile, targetAmount, period);
 
+  const productMatrix = AccountingEngine.getProductProfitabilityMatrix(profile);
+
   return (
     <div className="space-y-6">
       {/* Top Banner */}
@@ -35,11 +37,10 @@ export const TargetProfitPlanner: React.FC<GoalPlannerProps> = ({ profile }) => 
             Reverse Accounting & Unit Economics Solver
           </div>
           <h2 className="text-2xl font-bold tracking-tight">
-            টার্গেট প্রফিট প্ল্যানার (Goal-Seeking AI)
+            টার্গেট প্রফিট প্ল্যানার ও ইউনিট ইকোনমিক্স (Goal & Unit Economics)
           </h2>
           <p className="text-xs text-slate-300 mt-1">
-            আপনি কত টাকা লাভ করতে চান তা নির্ধারণ করুন। আমাদের অ্যালগরিদম কারখানার ফিক্সড খরচ, প্রতি
-            পিসের মার্জিন এবং প্রয়োজনীয় ফেব্রিকের নিখুঁত হিসাব বের করে দেবে।
+            আপনি কত টাকা লাভ করতে চান তা নির্ধারণ করুন এবং কোন পণ্যটি সবচেয়ে বেশি লাভজনক ও কোনটিতে লোকসান হচ্ছে তা শনাক্ত করুন।
           </p>
         </div>
       </div>
@@ -159,17 +160,17 @@ export const TargetProfitPlanner: React.FC<GoalPlannerProps> = ({ profile }) => 
               <div>
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                   <Scissors className="w-4 h-4 text-emerald-600" />
-                  প্রয়োজনীয় কাঁচামাল / ফেব্রিক (Raw Material)
+                  প্রয়োজনীয় কাঁচামাল / উপকরণ (Raw Material)
                 </span>
                 <div className="mt-2 text-3xl font-black text-emerald-600">
-                  {plan.requiredFabricMeters.toLocaleString()} মিটার/গজ
+                  {plan.requiredFabricMeters.toLocaleString()} মিটার/কেজি
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
-                  প্রতি ইউনিটে {profile.fabricMetersPerUnit} মিটার ফেব্রিক হিসেবে
+                  প্রতি ইউনিটে {profile.fabricMetersPerUnit} একক উপকরণ হিসেবে
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-600">
-                ফেব্রিক ক্রয়ের সম্ভাব্য বাজেট:{' '}
+                কাঁচামাল ক্রয়ের সম্ভাব্য বাজেট:{' '}
                 <strong>{plan.requiredFabricCost.toLocaleString()} {profile.currency}</strong>
               </div>
             </div>
@@ -213,6 +214,110 @@ export const TargetProfitPlanner: React.FC<GoalPlannerProps> = ({ profile }) => 
               </p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Product Profitability & Unit Economics Matrix */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-indigo-600" />
+              পণ্যভিত্তিক প্রফিট মার্জিন ও ইউনিট ইকোনমিক্স (Product Profitability Matrix)
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              প্রতিটি পণ্যের লাভ-মার্জিন ও লোকসানের হিসাব — কোনটিতে উৎপাদন বাড়ানো দরকার আর কোনটি লোকসানে চলছে
+            </p>
+          </div>
+          <span className="text-xs font-bold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200 w-fit">
+            Unit Economics Analyzer
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                <th className="py-3 px-4">পণ্য / সেবা</th>
+                <th className="py-3 px-3">বিক্রয়মূল্য</th>
+                <th className="py-3 px-3">ভ্যারিয়েবল খরচ</th>
+                <th className="py-3 px-3">কন্ট্রিবিউশন মার্জিন</th>
+                <th className="py-3 px-3">মার্জিন %</th>
+                <th className="py-3 px-3">মাসিক বিক্রয়</th>
+                <th className="py-3 px-3">অবস্থা (Status)</th>
+                <th className="py-3 px-4">সিএফও পরামর্শ (Action)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {productMatrix.map((item) => (
+                <tr
+                  key={item.id}
+                  className={`hover:bg-slate-50/80 transition ${
+                    item.status === 'loss_making' ? 'bg-rose-50/50' : ''
+                  }`}
+                >
+                  <td className="py-3.5 px-4 font-bold text-slate-900">{item.productName}</td>
+                  <td className="py-3.5 px-3 font-semibold text-slate-800">
+                    {item.unitSellingPrice.toLocaleString()} {profile.currency}
+                  </td>
+                  <td className="py-3.5 px-3 text-slate-600">
+                    {item.unitVariableCost.toLocaleString()} {profile.currency}
+                  </td>
+                  <td
+                    className={`py-3.5 px-3 font-bold ${
+                      item.contributionMargin >= 0 ? 'text-emerald-600' : 'text-rose-600'
+                    }`}
+                  >
+                    {item.contributionMargin >= 0 ? '+' : ''}
+                    {item.contributionMargin.toLocaleString()} {profile.currency}
+                  </td>
+                  <td className="py-3.5 px-3">
+                    <span
+                      className={`font-black ${
+                        item.marginPercentage >= 40
+                          ? 'text-emerald-600'
+                          : item.marginPercentage >= 20
+                          ? 'text-indigo-600'
+                          : item.marginPercentage >= 0
+                          ? 'text-amber-600'
+                          : 'text-rose-600'
+                      }`}
+                    >
+                      {item.marginPercentage}%
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-3 text-slate-600 font-medium">
+                    ~{item.monthlyVolumeEstimate} পিস
+                  </td>
+                  <td className="py-3.5 px-3">
+                    {item.status === 'high_profit' && (
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        ⭐ উচ্চ মার্জিন
+                      </span>
+                    )}
+                    {item.status === 'profitable' && (
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
+                        ✅ লাভজনক
+                      </span>
+                    )}
+                    {item.status === 'thin_margin' && (
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                        ⚠️ স্বল্প মার্জিন
+                      </span>
+                    )}
+                    {item.status === 'loss_making' && (
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">
+                        ❌ লোকসান ঝুঁকি
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-3.5 px-4 text-[11px] text-slate-600 leading-snug">
+                    {item.recommendation}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

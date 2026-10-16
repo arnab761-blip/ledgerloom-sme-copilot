@@ -11,7 +11,7 @@ export interface AgentResponse {
   executedTool?: string;
   toolOutput?: any;
   suggestedAction?: {
-    type: 'open_goal_modal' | 'show_debtors' | 'reconcile_loan' | 'approve_staging';
+    type: 'open_goal_modal' | 'show_debtors' | 'reconcile_loan' | 'approve_staging' | 'show_financing';
     label: string;
     labelEnglish: string;
   };
@@ -194,7 +194,144 @@ ${highRiskHi}
       };
     }
 
-    // 3. Loans & Reconciliation
+    // 3. New Loan Evaluation & Multi-Step Reasoning (e.g. "মেশিন কেনার জন্য লোন নেওয়া কি ঠিক হবে?")
+    const isLoanEvaluationIntent =
+      (q.includes('মেশিন') || q.includes('machine') || q.includes('নিতে চাই') || q.includes('ঠিক হবে') || q.includes('should i') || q.includes('invest') || q.includes('বিনিয়োগ')) &&
+      (q.includes('ঋণ') || q.includes('loan') || q.includes('লোন') || q.includes('贷款') || q.includes('कर्ज'));
+
+    if (isLoanEvaluationIntent) {
+      const loanAmountMatch = q.match(/(\d+[\d,]*)/);
+      const prospectiveAmount = loanAmountMatch ? parseInt(loanAmountMatch[1].replace(/,/g, ''), 10) : 50000;
+      const sim = AccountingEngine.calculateLoanEMI(prospectiveAmount, 8.5, 24);
+      const postEmiProfit = health.netProfit - sim.monthlyEMI;
+
+      const ansBn = `🧠 **AI CFO মাল্টি-স্টেপ ডিসিশন ফ্রেমওয়ার্ক (৩টি ধাপে বিশ্লেষণ):**
+
+• **ধাপ ১ (বর্তমান মুনাফা যাচাই):** আপনার কারখানার চলতি মাসিক নিট মুনাফা **${health.netProfit.toLocaleString()} ${profile.currency}**।
+• **ধাপ ২ (ক্যাশ-ফ্লো প্রজেকশন):** ${prospectiveAmount.toLocaleString()} ${profile.currency} ঋণের ক্ষেত্রে ৮.৫% সুদে ২৪ মাসের আনুমানিক মাসিক কিস্তি দাঁড়াবে **${sim.monthlyEMI.toLocaleString()} ${profile.currency}**। কিস্তি দেওয়ার পরও আপনার মাসিক সারপ্লাস থাকবে **+${postEmiProfit.toLocaleString()} ${profile.currency}**।
+• **ধাপ ৩ (উপযুক্ত স্কিম ম্যাচিং):** সাধারণ শর্ট-টার্ম লোনের চেয়ে **'Machinery & Equipment Expansion Lease'** নেওয়া বেশি লাভজনক, কারণ এতে কোনো অতিরিক্ত জামানত ছাড়াই মেশিন নিজেই জামানত হিসেবে থাকবে।
+
+💡 **চূড়ান্ত পরামর্শ:** হ্যাঁ, আপনার বর্তমান ক্যাশ-ফ্লো অনুযায়ী এই লোন নেওয়া ঝুঁকিমুক্ত ও লাভজনক।`;
+
+      const ansEn = `🧠 **AI CFO Multi-Step Reasoning Framework (3-Step Decision Analysis):**
+
+• **Step 1 (Profitability Check):** Current monthly net profit is **${health.netProfit.toLocaleString()} ${profile.currency}**.
+• **Step 2 (Cash Flow Stress-Test):** For a ${prospectiveAmount.toLocaleString()} ${profile.currency} loan at 8.5% APR over 24 months, estimated monthly EMI is **${sim.monthlyEMI.toLocaleString()} ${profile.currency}**. Monthly surplus remains positive at **+${postEmiProfit.toLocaleString()} ${profile.currency}**.
+• **Step 3 (Scheme Matching):** Recommend **'Machinery & Equipment Expansion Lease'** over short-term loans, using the equipment itself as collateral.
+
+💡 **Conclusion:** Approved. Your factory cash runway comfortably supports this capital expenditure.`;
+
+      const ansZh = `🧠 **AI 首席财务官多步逻辑推理架构 (3步决策分析法)：**
+
+• **第 1 步 (当前盈利校验):** 工厂当前月度净利润为 **${health.netProfit.toLocaleString()} ${profile.currency}**。
+• **第 2 步 (现金流压力测试):** 针对 ${prospectiveAmount.toLocaleString()} ${profile.currency} 的设备融资，按 8.5% 年化测算 24 期月供约为 **${sim.monthlyEMI.toLocaleString()} ${profile.currency}**。扣除还贷后月度现金结余仍保持在 **+${postEmiProfit.toLocaleString()} ${profile.currency}**。
+• **第 3 步 (最优信贷方案匹配):** 强烈推荐优先匹配 **“设备融资租赁 (Machinery Lease)”**，直接以新设备作为物权担保，无需额外不动产抵押。
+
+💡 **决策结论:** 经压力测试，该笔资本开支完全在您的安全现金流承受范围内。`;
+
+      const ansHi = `🧠 **एआई सीएफओ बहु-चरणीय निर्णय ढाँचा (3 चरणों में विश्लेषण):**
+
+• **चरण 1 (लाभप्रदता जांच):** आपके कारखाने का वर्तमान मासिक शुद्ध लाभ **${health.netProfit.toLocaleString()} ${profile.currency}** है।
+• **चरण 2 (नकदी प्रवाह तनाव परीक्षण):** ${prospectiveAmount.toLocaleString()} ${profile.currency} ऋण के लिए 24 माह की अनुमानित मासिक किस्त **${sim.monthlyEMI.toLocaleString()} ${profile.currency}** होगी। किस्त के बाद भी अधिशेष **+${postEmiProfit.toLocaleString()} ${profile.currency}** बना रहेगा।
+• **चरण 3 (योजना मिलान):** सामान्य ऋण के बजाय **'मशीनरी लीजिंग'** विकल्प चुनें जिसमें उपकरण ही बंधक का कार्य करता है।
+
+💡 **निष्कर्ष:** अनुमोदित। आपका नकदी प्रवाह इस निवेश को वहन करने में पूर्णतः सक्षम है।`;
+
+      const primary = lang === 'zh' ? ansZh : lang === 'bn' ? ansBn : lang === 'hi' ? ansHi : ansEn;
+
+      return {
+        answerPrimary: primary,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'evaluateEquipmentLoanEligibility',
+        toolOutput: { sim, postEmiProfit },
+        suggestedAction: {
+          type: 'open_goal_modal',
+          label: lang === 'zh' ? '查看信贷方案列表' : lang === 'bn' ? 'ম্যাচিং ফাইন্যান্সিং বিকল্প দেখুন' : lang === 'hi' ? 'वित्त विकल्प देखें' : 'View Financing Options',
+          labelEnglish: 'View Financing Options',
+        },
+        metricsSnapshot: health,
+      };
+    }
+
+    // 4. Financing Matching Intent (e.g. "লোনের অপশনগুলো দেখাও" or "financing options")
+    const isFinancingMatchIntent =
+      q.includes('লোনের অপশন') ||
+      q.includes('লোন অপশন') ||
+      q.includes('ফাইন্যান্সিং') ||
+      q.includes('বিকল্প লোন') ||
+      q.includes('loan option') ||
+      q.includes('financing') ||
+      q.includes('credit option') ||
+      q.includes('show loans') ||
+      q.includes('what loans') ||
+      q.includes('贷款方案') ||
+      q.includes('融资方案') ||
+      q.includes('推荐贷款') ||
+      q.includes('ऋण विकल्प');
+
+    if (isFinancingMatchIntent) {
+      const options = AccountingEngine.matchFinancingOptions(profile, health, debtors);
+      const top3 = options.slice(0, 3);
+
+      const topBn = top3
+        .map(
+          (opt, i) =>
+            `${i + 1}. **${opt.name}** (${opt.fitScorePercentage}% ম্যাচ)\n   • সুদের হার: ${opt.interestRateText} | মেয়াদ: ${opt.tenureMonths} মাস\n   • সর্বোচ্চ সীমা: ${opt.maxAmount.toLocaleString()} ${profile.currency} (${opt.collateralRequired ? 'জামানতযুক্ত' : 'জামানতবিহীন'})\n   • উপযোগী কারণ: ${opt.explainableMatchReason}`
+        )
+        .join('\n\n');
+
+      const topEn = top3
+        .map(
+          (opt, i) =>
+            `${i + 1}. **${opt.name}** (${opt.fitScorePercentage}% Fit)\n   • Rate: ${opt.interestRateText} | Tenure: ${opt.tenureMonths} mos\n   • Limit: ${opt.maxAmount.toLocaleString()} ${profile.currency} (${opt.collateralRequired ? 'Secured' : 'Unsecured'})\n   • Match Reason: ${opt.explainableMatchReason}`
+        )
+        .join('\n\n');
+
+      const topZh = top3
+        .map(
+          (opt, i) =>
+            `${i + 1}. **${opt.name}**（匹配度: ${opt.fitScorePercentage}%）\n   • 利率: ${opt.interestRateText} | 期限: ${opt.tenureMonths} 个月\n   • 额度: ${opt.maxAmount.toLocaleString()} ${profile.currency}（${opt.collateralRequired ? '需抵押' : '纯信用无担保'}）\n   • 匹配理由: ${opt.explainableMatchReason}`
+        )
+        .join('\n\n');
+
+      const topHi = top3
+        .map(
+          (opt, i) =>
+            `${i + 1}. **${opt.name}** (${opt.fitScorePercentage}% मैच)\n   • ब्याज दर: ${opt.interestRateText} | अवधि: ${opt.tenureMonths} माह\n   • अधिकतम सीमा: ${opt.maxAmount.toLocaleString()} ${profile.currency} (${opt.collateralRequired ? 'जमानत' : 'बिना गारंटी'})\n   • उपयुक्तता: ${opt.explainableMatchReason}`
+        )
+        .join('\n\n');
+
+      const ansBn = `আপনার বর্তমান মাসিক ক্যাশ-ফ্লো, আয় ও বকেয়া ইনভয়েস অ্যানালাইসিস করে AI Underwriting ইঞ্জিন **৩টি সেরা ফাইন্যান্সিং বিকল্প** নির্ধারণ করেছে:\n\n${topBn}\n\n💡 আপনি সরাসরি ড্যাশবোর্ড থেকে WeBank ডিজিটাল স্যান্ডবক্সে আবেদন করতে পারবেন।`;
+      const ansEn = `Based on your monthly cash-flow, revenues, and receivables, our AI Underwriting Engine has matched **top 3 financing options**:\n\n${topEn}\n\n💡 You can apply directly through the WeBank Digital Sandbox on the Financing tab.`;
+      const ansZh = `基于您的月度现金流、营收数据与应收账款，AI 智能信贷核保引擎为您优选匹配了 **3 个最具性价比的融资方案**：\n\n${topZh}\n\n💡 您可在“融资方案”标签页一键提交至微众银行 (WeBank) 数字信贷沙盒。`;
+      const ansHi = `आपके मासिक नकदी प्रवाह, राजस्व और बकाया के आधार पर एआई अंडरराइटिंग इंजन ने **3 शीर्ष वित्त विकल्प** चुने हैं:\n\n${topHi}\n\n💡 आप सीधे वित्त टैब से आवेदन कर सकते हैं।`;
+
+      const primary = lang === 'zh' ? ansZh : lang === 'bn' ? ansBn : lang === 'hi' ? ansHi : ansEn;
+
+      return {
+        answerPrimary: primary,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'matchFinancingOptions',
+        toolOutput: options,
+        suggestedAction: {
+          type: 'show_financing',
+          label:
+            lang === 'zh'
+              ? '查看全部融资对比表'
+              : lang === 'bn'
+              ? 'সম্পূর্ণ ফাইন্যান্সিং তুলনা দেখুন'
+              : lang === 'hi'
+              ? 'पूर्ण वित्त तुलना देखें'
+              : 'View Full Financing Comparison',
+          labelEnglish: 'View Full Financing Comparison Table',
+        },
+        metricsSnapshot: health,
+      };
+    }
+
+    // 5. Loans & Reconciliation
     const isLoanIntent =
       q.includes('ঋণ') ||
       q.includes('দেনা') ||

@@ -8,6 +8,7 @@ import { ReceiptScannerStaging } from '@/components/ReceiptScannerStaging';
 import { DebtorsAlerts } from '@/components/DebtorsAlerts';
 import { LoanReconciliation } from '@/components/LoanReconciliation';
 import { TargetProfitPlanner } from '@/components/TargetProfitPlanner';
+import { FinancingMatcher } from '@/components/FinancingMatcher';
 import { CopilotChat } from '@/components/CopilotChat';
 import { SecurityAuditModal } from '@/components/SecurityAuditModal';
 import {
@@ -17,6 +18,8 @@ import {
   LoanLiability,
   AuditLogEntry,
   FinancialHealthMetrics,
+  FinancingOption,
+  AnomalyAlert,
 } from '@/lib/types';
 import { SupportedLanguage } from '@/lib/i18n';
 
@@ -52,6 +55,9 @@ export default function HomePage() {
   const [loans, setLoans] = useState<LoanLiability[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [metrics, setMetrics] = useState<FinancialHealthMetrics | null>(null);
+  const [financingOptions, setFinancingOptions] = useState<FinancingOption[]>([]);
+  const [anomalies, setAnomalies] = useState<AnomalyAlert[]>([]);
+  const [currentPreset, setCurrentPreset] = useState<'garments' | 'cafe'>('garments');
 
   // Load Financial Data
   const loadFinancialData = useCallback(async () => {
@@ -65,12 +71,36 @@ export default function HomePage() {
         setLoans(json.loans);
         setAuditLogs(json.auditLogs);
         setMetrics(json.healthMetrics);
+        if (json.financingOptions) setFinancingOptions(json.financingOptions);
+        if (json.anomalies) setAnomalies(json.anomalies);
+        if (json.profile?.industry?.toLowerCase().includes('coffee') || json.profile?.industry?.toLowerCase().includes('café')) {
+          setCurrentPreset('cafe');
+        } else {
+          setCurrentPreset('garments');
+        }
         setDataLoaded(true);
       }
     } catch (err) {
       console.error('Failed to load data', err);
     }
   }, []);
+
+  const handleSwitchPreset = async (preset: 'garments' | 'cafe') => {
+    try {
+      const res = await fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'switch_preset', payload: { preset } }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCurrentPreset(preset);
+        await loadFinancialData();
+      }
+    } catch (err) {
+      console.error('Failed to switch preset', err);
+    }
+  };
 
   useEffect(() => {
     loadFinancialData();
@@ -290,6 +320,8 @@ export default function HomePage() {
         onRefreshData={loadFinancialData}
         currentLanguage={currentLanguage}
         onChangeLanguage={handleChangeLanguage}
+        currentPreset={currentPreset}
+        onSwitchPreset={handleSwitchPreset}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -299,6 +331,7 @@ export default function HomePage() {
             profile={profile}
             debtors={debtors}
             loans={loans}
+            anomalies={anomalies}
             onNavigateTab={setActiveTab}
             currentLanguage={currentLanguage}
           />
@@ -346,6 +379,18 @@ export default function HomePage() {
             onRecordPayment={handleRecordPayment}
             isUnlocked={isUnlocked}
             onRequireUnlock={() => setIsSecurityModalOpen(true)}
+          />
+        )}
+
+        {activeTab === 'financing' && (
+          <FinancingMatcher
+            financingOptions={financingOptions}
+            profile={profile}
+            health={metrics}
+            debtors={debtors}
+            isUnlocked={isUnlocked}
+            onRequireUnlock={() => setIsSecurityModalOpen(true)}
+            currentLanguage={currentLanguage}
           />
         )}
 

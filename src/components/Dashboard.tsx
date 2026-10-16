@@ -23,7 +23,7 @@ import {
   Area,
   Legend,
 } from 'recharts';
-import { FinancialHealthMetrics, BusinessProfile, DebtorRecord, LoanLiability } from '@/lib/types';
+import { FinancialHealthMetrics, BusinessProfile, DebtorRecord, LoanLiability, AnomalyAlert } from '@/lib/types';
 import { SupportedLanguage, getTranslation } from '@/lib/i18n';
 
 interface DashboardProps {
@@ -31,6 +31,7 @@ interface DashboardProps {
   profile: BusinessProfile;
   debtors: DebtorRecord[];
   loans: LoanLiability[];
+  anomalies?: AnomalyAlert[];
   onNavigateTab: (tab: string) => void;
   currentLanguage: SupportedLanguage;
 }
@@ -40,6 +41,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   profile,
   debtors,
   loans,
+  anomalies = [],
   onNavigateTab,
   currentLanguage,
 }) => {
@@ -47,16 +49,33 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const t = (key: string, params?: Record<string, string | number>) =>
     getTranslation(currentLanguage, key, params);
 
-  // Sample historical + forecast cash flow curve
-  const cashFlowForecast = [
+  const [forecastDays, setForecastDays] = React.useState<30 | 60>(30);
+
+  // 30-day forecast curve
+  const cashFlowForecast30 = [
     { day: 'Day 1', inflow: 45000, outflow: 20000, balance: 125000 },
     { day: 'Day 5', inflow: 60000, outflow: 35000, balance: 150000 },
     { day: 'Day 10', inflow: 30000, outflow: 85000, balance: 95000 },
     { day: 'Day 15', inflow: 80000, outflow: 25000, balance: 150000 },
-    { day: 'Day 20 (Payroll)', inflow: 20000, outflow: 145000, balance: 25000 },
+    { day: 'Day 20 (Payable/Due)', inflow: 20000, outflow: 145000, balance: 25000 },
     { day: 'Day 25', inflow: 95000, outflow: 30000, balance: 90000 },
     { day: 'Day 30', inflow: 50000, outflow: 20000, balance: 120000 },
   ];
+
+  // 60-day forecast curve (Past 3-6 months pattern projection)
+  const cashFlowForecast60 = [
+    { day: 'Day 1', inflow: 45000, outflow: 20000, balance: 125000 },
+    { day: 'Day 10', inflow: 75000, outflow: 55000, balance: 145000 },
+    { day: 'Day 20 (Month 1 Due)', inflow: 30000, outflow: 140000, balance: 35000 },
+    { day: 'Day 30', inflow: 95000, outflow: 35000, balance: 95000 },
+    { day: 'Day 40', inflow: 65000, outflow: 40000, balance: 120000 },
+    { day: 'Day 50 (Month 2 Due)', inflow: 40000, outflow: 135000, balance: 25000 },
+    { day: 'Day 60', inflow: 110000, outflow: 45000, balance: 150000 },
+  ];
+
+  const activeForecast = forecastDays === 30 ? cashFlowForecast30 : cashFlowForecast60;
+  const finalProjectedBalance = activeForecast[activeForecast.length - 1].balance;
+  const isSurplus = finalProjectedBalance >= 0;
 
   const costBreakdownData = [
     { name: t('fixedCostOption').slice(0, 14), amount: metrics.totalFixedCosts, fill: '#6366f1' },
@@ -91,6 +110,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {t('askCopilotBtn')}
           </button>
           <button
+            onClick={() => onNavigateTab('financing')}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition"
+          >
+            💳 {t('tabFinancing')}
+          </button>
+          <button
             onClick={() => onNavigateTab('goal_planner')}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sm font-semibold flex items-center gap-2 transition"
           >
@@ -99,31 +124,40 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Proactive Early Warning Alert Banner (If Debtors > 30k) */}
-      {highRiskDebtors.length > 0 && (
-        <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
-              <AlertTriangle className="w-5 h-5 text-rose-600" />
+      {/* Smart Anomaly & Shortage Feed */}
+      {anomalies.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {anomalies.map((anom) => (
+            <div
+              key={anom.id}
+              className={`p-3.5 rounded-xl border flex items-start gap-3 transition ${
+                anom.severity === 'critical'
+                  ? 'bg-rose-50 border-rose-200 text-rose-900'
+                  : anom.severity === 'warning'
+                  ? 'bg-amber-50 border-amber-200 text-amber-900'
+                  : 'bg-indigo-50 border-indigo-200 text-indigo-900'
+              }`}
+            >
+              <div
+                className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                  anom.severity === 'critical'
+                    ? 'bg-rose-200 text-rose-700'
+                    : anom.severity === 'warning'
+                    ? 'bg-amber-200 text-amber-700'
+                    : 'bg-indigo-200 text-indigo-700'
+                }`}
+              >
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs font-bold">{anom.title}</div>
+                <div className="text-[11px] leading-snug opacity-90">{anom.description}</div>
+                <div className="text-[10px] font-semibold opacity-75 pt-1">
+                  💡 প্রস্তাব: {anom.recommendedAction}
+                </div>
+              </div>
             </div>
-            <div>
-              <h4 className="text-sm font-bold text-rose-900">
-                {t('urgentDebtorAlert', { count: highRiskDebtors.length })}
-              </h4>
-              <p className="text-xs text-rose-700">
-                {t('totalAtRisk', {
-                  amount: highRiskDebtors.reduce((sum, d) => sum + d.amount, 0).toLocaleString(),
-                  currency,
-                })}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => onNavigateTab('debtors')}
-            className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shrink-0 flex items-center gap-1.5 transition shadow"
-          >
-            {t('sendReminderBtn')} <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          ))}
         </div>
       )}
 
@@ -235,22 +269,58 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Predictive Cash Flow Curve (Area Chart) */}
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
-              <h3 className="text-base font-bold text-slate-900">
-                {t('cashCurveTitle')}
-              </h3>
-              <p className="text-xs text-slate-500">
-                {t('cashCurveDesc')}
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-slate-900">
+                  {t('cashCurveTitle')}
+                </h3>
+                <span
+                  className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                    isSurplus
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                      : 'bg-rose-50 text-rose-700 border-rose-300 animate-pulse'
+                  }`}
+                >
+                  {isSurplus
+                    ? `উদ্বৃত্ত প্রক্ষেপণ: +${finalProjectedBalance.toLocaleString()} ${currency}`
+                    : `ঘাটতি ঝুঁকি: ${finalProjectedBalance.toLocaleString()} ${currency}`}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                বিগত ৩–৬ মাসের প্যাটার্ন অনুযায়ী আগামী {forecastDays} দিনের সম্ভাব্য ক্যাশ-ফ্লো পূর্বাভাস
               </p>
             </div>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600">
-              {t('forecastBadge')}
-            </span>
+
+            {/* 30 vs 60 Days Forecast Period Buttons */}
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl shrink-0">
+              <button
+                type="button"
+                onClick={() => setForecastDays(30)}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
+                  forecastDays === 30
+                    ? 'bg-white text-indigo-600 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                ৩০ দিনের পূর্বাভাস
+              </button>
+              <button
+                type="button"
+                onClick={() => setForecastDays(60)}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
+                  forecastDays === 60
+                    ? 'bg-white text-indigo-600 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                ৬০ দিনের পূর্বাভাস
+              </button>
+            </div>
           </div>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={cashFlowForecast}>
+              <AreaChart data={activeForecast}>
                 <defs>
                   <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.4} />

@@ -25,6 +25,8 @@ interface HeaderProps {
   onRefreshData?: () => void;
   currentLanguage: SupportedLanguage;
   onChangeLanguage: (lang: SupportedLanguage) => void;
+  currentPreset?: 'garments' | 'cafe';
+  onSwitchPreset?: (preset: 'garments' | 'cafe') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -37,6 +39,8 @@ export const Header: React.FC<HeaderProps> = ({
   onRefreshData,
   currentLanguage,
   onChangeLanguage,
+  currentPreset = 'garments',
+  onSwitchPreset,
 }) => {
   const [uploading, setUploading] = useState(false);
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
@@ -83,6 +87,7 @@ export const Header: React.FC<HeaderProps> = ({
     },
     { id: 'debtors', label: t('tabDebtors') },
     { id: 'loans', label: t('tabLoans') },
+    { id: 'financing', label: t('tabFinancing') },
     { id: 'goal_planner', label: t('tabGoalPlanner') },
     { id: 'copilot', label: t('tabCopilot') },
     { id: 'audit', label: t('tabAudit') },
@@ -118,6 +123,36 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Quick Actions, Language Switcher & Security Status */}
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* Scenario Preset Switcher */}
+            <div className="flex items-center bg-slate-800 border border-slate-700/80 rounded-lg p-0.5 shadow-sm">
+              <button
+                type="button"
+                onClick={() => onSwitchPreset?.('garments')}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition flex items-center gap-1.5 ${
+                  currentPreset === 'garments'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Loom & Stitch Garments (Textile Factory SME)"
+              >
+                <span>🏭</span>
+                <span className="hidden sm:inline">গার্মেন্টস ফ্যাক্টরি</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onSwitchPreset?.('cafe')}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition flex items-center gap-1.5 ${
+                  currentPreset === 'cafe'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="BrewCraft Artisan Café (Competition Coffee Shop Scenario)"
+              >
+                <span>☕</span>
+                <span className="hidden sm:inline">ক্যাফে ডেমো (Café)</span>
+              </button>
+            </div>
+
             {/* Language Selector Dropdown */}
             <div className="relative">
               <button

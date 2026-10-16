@@ -58,28 +58,28 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
 
   const quickPromptsByLang: Record<SupportedLanguage, string[]> = {
     en: [
-      'Last month profit or loss breakdown?',
+      'Show financing options',
       'I want to make 30,000 profit next month, what to do?',
       'Who owes overdue money (>30k)?',
       'How much debt is remaining and EMI?',
       'Where did we spend the most overhead?',
     ],
     zh: [
-      '上月净利润与亏损明细如何？',
+      '显示适合我的贷款方案',
       '下个月想要赚 30,000 净利润，需要做什么？',
       '有哪些客户欠款超过 30,000 警戒线？',
       '当前剩余贷款本金及月供是多少？',
       '哪项成本开支占比最高？',
     ],
     bn: [
-      'গত মাসে লাভ বা ক্ষতি কত?',
+      'লোনের অপশনগুলো দেখাও',
       'সামনের মাসে ২৫,০০০ টাকা লাভ করতে চাই, কি কি করতে হবে?',
       'কার কাছে কত টাকা বাকি আছে (>৩০k)?',
       'ঋণ কত বাকি আছে এবং মাসিক কিস্তির হিসাব দাও',
       'কোথায় সবচেয়ে বেশি খরচ হয়েছে?',
     ],
     hi: [
-      'पिछले महीने का लाभ या हानि विवरण क्या है?',
+      'ऋण विकल्प दिखाओ',
       'अगले महीने 30,000 लाभ कमाने के लिए क्या करें?',
       'किन ग्राहकों का 30,000 से अधिक बकाया है?',
       'कुल कितना ऋण बाकी है और मासिक किस्त?',
@@ -237,6 +237,7 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
                       if (m.suggestedAction.type === 'open_goal_modal') onNavigateTab('goal_planner');
                       if (m.suggestedAction.type === 'show_debtors') onNavigateTab('debtors');
                       if (m.suggestedAction.type === 'reconcile_loan') onNavigateTab('loans');
+                      if (m.suggestedAction.type === 'show_financing') onNavigateTab('financing');
                     }}
                     className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] flex items-center gap-1.5 transition shadow"
                   >

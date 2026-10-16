@@ -17,6 +17,17 @@ export async function GET() {
       loans
     );
     const breakEven = AccountingEngine.calculateBreakEven(profile);
+    const financingOptions = AccountingEngine.matchFinancingOptions(
+      profile,
+      healthMetrics,
+      debtors
+    );
+    const anomalies = AccountingEngine.detectAnomalies(
+      profile,
+      healthMetrics,
+      transactions,
+      debtors
+    );
 
     return NextResponse.json({
       success: true,
@@ -27,6 +38,8 @@ export async function GET() {
       auditLogs,
       healthMetrics,
       breakEven,
+      financingOptions,
+      anomalies,
     });
   } catch (err: any) {
     return NextResponse.json(
@@ -75,6 +88,11 @@ export async function POST(req: Request) {
       case 'record_loan_payment': {
         const success = ExcelDatabase.recordLoanPayment(payload.id, payload.amount);
         return NextResponse.json({ success });
+      }
+
+      case 'switch_preset': {
+        const result = ExcelDatabase.switchPreset(payload.preset);
+        return NextResponse.json(result);
       }
 
       default:

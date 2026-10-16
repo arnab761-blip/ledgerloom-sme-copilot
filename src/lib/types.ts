@@ -117,3 +117,46 @@ export interface SecuritySessionState {
   expiresAt: number | null;
   timeoutMinutes: number; // 30 mins
 }
+
+export interface FinancingOption {
+  id: string;
+  name: string;
+  provider: string; // e.g. WeBank Digital SME, Partner Bank
+  type: 'working_capital' | 'invoice_factoring' | 'equipment_lease' | 'micro_advance';
+  minAmount: number;
+  maxAmount: number;
+  interestRateText: string;
+  tenureMonths: number;
+  processingTime: string;
+  collateralRequired: boolean;
+  fitScorePercentage: number;
+  eligibilityStatus: 'eligible' | 'conditional' | 'not_eligible';
+  explainableMatchReason: string;
+  hiddenFees: string;
+}
+
+export interface AnomalyAlert {
+  id: string;
+  type: 'expense_spike' | 'liquidity_shortage' | 'overdue_debtor' | 'payroll_dip';
+  severity: 'critical' | 'warning' | 'info';
+  title: string;
+  description: string;
+  recommendedAction: string;
+  projectedDate: string;
+}
+
+export interface ProductProfitabilityItem {
+  id: string;
+  productName: string;
+  unitSellingPrice: number;
+  unitVariableCost: number;
+  contributionMargin: number;
+  marginPercentage: number;
+  monthlyVolumeEstimate: number;
+  totalMonthlyMarginContribution: number;
+  status: 'high_profit' | 'profitable' | 'thin_margin' | 'loss_making';
+  recommendation: string;
+}
+
+export type DemoScenarioPreset = 'garments' | 'cafe';
+

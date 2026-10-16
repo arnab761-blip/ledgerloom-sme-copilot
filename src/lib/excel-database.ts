@@ -180,6 +180,162 @@ const DEFAULT_LOANS: LoanLiability[] = [
   },
 ];
 
+// Realistic Competition Demo Scenario Preset 2: Artisan Café / Coffee Shop (Exact scenario from competition prompt)
+const CAFE_PROFILE: BusinessProfile = {
+  businessName: 'BrewCraft Artisan Café (SME)',
+  industry: 'Specialty Coffee & Artisan Bakery',
+  startDate: '2025-01-15',
+  initialInvestment: 450000,
+  workerCount: 6,
+  workerSalariesMonthly: 68000,
+  electricityBillMonthly: 24300, // +35% above baseline 18,000
+  rentMonthly: 35000,
+  maintenanceMonthly: 5000,
+  otherFixedCostsMonthly: 4000,
+  primaryProduct: 'Signature Cold Brew & Specialty Latte',
+  unitSellingPrice: 320,
+  unitVariableCost: 90,
+  fabricMetersPerUnit: 0.15,
+  fabricCostPerMeter: 600,
+  currency: 'BDT',
+};
+
+const CAFE_TRANSACTIONS: Transaction[] = [
+  {
+    id: 'TX-C001',
+    date: '2026-10-02',
+    type: 'income',
+    category: 'sales',
+    costType: 'variable',
+    amount: 125000,
+    description: 'Weekly Walk-in Coffee & Bakery Sales Revenue',
+    partyName: 'Retail Walk-in Customers',
+    paymentMethod: 'mobile_money',
+    status: 'approved',
+    source: 'manual_form',
+    createdAt: '2026-10-02T18:30:00Z',
+  },
+  {
+    id: 'TX-C002',
+    date: '2026-10-04',
+    type: 'expense',
+    category: 'salary',
+    costType: 'fixed',
+    amount: 68000,
+    description: 'Monthly Staff & Barista Payroll (6 staff members)',
+    paymentMethod: 'bank_transfer',
+    status: 'approved',
+    source: 'manual_form',
+    createdAt: '2026-10-04T10:00:00Z',
+  },
+  {
+    id: 'TX-C003',
+    date: '2026-10-07',
+    type: 'expense',
+    category: 'utility',
+    costType: 'fixed',
+    amount: 24300,
+    description: 'Commercial Refrigeration & Espresso Power Bill (35% Spike)',
+    paymentMethod: 'mobile_money',
+    status: 'approved',
+    source: 'manual_form',
+    createdAt: '2026-10-07T11:00:00Z',
+  },
+  {
+    id: 'TX-C004',
+    date: '2026-10-10',
+    type: 'expense',
+    category: 'raw_material',
+    costType: 'variable',
+    amount: 32000,
+    description: 'Direct Trade Arabica Coffee Beans (50kg)',
+    partyName: 'Artisan Roast Importers',
+    paymentMethod: 'bank_transfer',
+    status: 'approved',
+    source: 'receipt_ocr',
+    createdAt: '2026-10-10T14:00:00Z',
+  },
+  {
+    id: 'TX-C005',
+    date: '2026-10-12',
+    type: 'income',
+    category: 'sales',
+    costType: 'variable',
+    amount: 45000,
+    description: 'Corporate Startup Summit Coffee Bar Catering',
+    partyName: 'Fintech Hub Dhaka',
+    paymentMethod: 'cheque',
+    status: 'approved',
+    source: 'manual_form',
+    createdAt: '2026-10-12T16:00:00Z',
+  },
+  {
+    id: 'TX-C006',
+    date: '2026-10-14',
+    type: 'expense',
+    category: 'raw_material',
+    costType: 'variable',
+    amount: 8500,
+    description: 'Urgent Pastry Butter & Organic Milk Supply',
+    partyName: 'FarmFresh Agro Dairy',
+    paymentMethod: 'cash',
+    status: 'pending_approval',
+    source: 'receipt_ocr',
+    evidenceNote: 'Delivery receipt photographed. Awaiting owner review.',
+    createdAt: '2026-10-14T09:30:00Z',
+  },
+];
+
+const CAFE_DEBTORS: DebtorRecord[] = [
+  {
+    id: 'DB-C101',
+    partyName: 'Customer X (Corporate Event Catering)',
+    contactNumber: '+8801722334455',
+    type: 'receivable',
+    amount: 32000, // Overdue receivables matching prompt "Customer X $2,000 / 32k"
+    originalAmount: 32000,
+    issueDate: '2026-09-18',
+    dueDate: '2026-10-08',
+    status: 'overdue',
+    alertThreshold: 30000,
+    notes: 'Outstanding bill for tech symposium catering. Payment promised Oct 8.',
+    reminderSentCount: 1,
+    lastReminderDate: '2026-10-11',
+  },
+  {
+    id: 'DB-C102',
+    partyName: 'PureDairy Farms (Fresh Milk Supplier)',
+    contactNumber: '+8801833445566',
+    type: 'payable',
+    amount: 38000, // Due next week on Oct 22, triggers liquidity deficit warning
+    originalAmount: 48000,
+    issueDate: '2026-09-22',
+    dueDate: '2026-10-22',
+    status: 'pending',
+    alertThreshold: 30000,
+    notes: 'Weekly fresh dairy delivery payable. Due in 6 days.',
+    reminderSentCount: 0,
+  },
+];
+
+const CAFE_LOANS: LoanLiability[] = [
+  {
+    id: 'LN-C201',
+    lenderName: 'Merchant Instant Micro-Advance (7-Day Facility)',
+    lenderType: 'mfi',
+    principal: 60000,
+    annualInterestRate: 8.5,
+    tenureMonths: 6,
+    monthlyEMI: 10425,
+    startDate: '2026-07-01',
+    totalPaid: 31275,
+    remainingBalance: 31275,
+    nextPaymentDate: '2026-11-01',
+    status: 'active',
+  },
+];
+
+
 export class ExcelDatabase {
   private static ensureDatabaseFile(): void {
     if (!fs.existsSync(DB_FILE_PATH)) {
@@ -516,5 +672,56 @@ export class ExcelDatabase {
   public static getRawWorkbookBuffer(): Buffer {
     this.ensureDatabaseFile();
     return fs.readFileSync(DB_FILE_PATH);
+  }
+
+  /**
+   * Switches the active business scenario preset between Garments Factory and Artisan Café
+   */
+  public static switchPreset(preset: 'garments' | 'cafe'): { success: boolean; preset: string } {
+    const profile = preset === 'cafe' ? CAFE_PROFILE : DEFAULT_PROFILE;
+    const txs = preset === 'cafe' ? CAFE_TRANSACTIONS : DEFAULT_TRANSACTIONS;
+    const debtors = preset === 'cafe' ? CAFE_DEBTORS : DEFAULT_DEBTORS;
+    const loans = preset === 'cafe' ? CAFE_LOANS : DEFAULT_LOANS;
+
+    const wb = XLSX.utils.book_new();
+
+    const profileRows = [
+      { Field: 'Business Name', Value: profile.businessName },
+      { Field: 'Industry', Value: profile.industry },
+      { Field: 'Start Date', Value: profile.startDate },
+      { Field: 'Initial Investment', Value: profile.initialInvestment },
+      { Field: 'Worker Count', Value: profile.workerCount },
+      { Field: 'Worker Salaries (Monthly)', Value: profile.workerSalariesMonthly },
+      { Field: 'Electricity Bill (Monthly)', Value: profile.electricityBillMonthly },
+      { Field: 'Rent (Monthly)', Value: profile.rentMonthly },
+      { Field: 'Maintenance (Monthly)', Value: profile.maintenanceMonthly },
+      { Field: 'Other Fixed Costs', Value: profile.otherFixedCostsMonthly },
+      { Field: 'Primary Product', Value: profile.primaryProduct },
+      { Field: 'Unit Selling Price', Value: profile.unitSellingPrice },
+      { Field: 'Unit Variable Cost', Value: profile.unitVariableCost },
+      { Field: 'Fabric Meters Per Unit', Value: profile.fabricMetersPerUnit },
+      { Field: 'Fabric Cost Per Meter', Value: profile.fabricCostPerMeter },
+      { Field: 'Currency', Value: profile.currency },
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(profileRows), 'Business_Profile');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(txs), 'Daily_Transactions');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(debtors), 'Debtors_Creditors');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(loans), 'Loans_Liabilities');
+
+    const logs = this.getAuditLogs();
+    logs.push({
+      id: `AUD-${Date.now().toString().slice(-4)}`,
+      timestamp: new Date().toISOString(),
+      actor: 'owner',
+      action: 'SWITCH_DEMO_SCENARIO',
+      permissionTier: 'Tier-4-Execute',
+      targetEntity: preset,
+      details: `Switched demo scenario dataset to ${preset === 'cafe' ? 'BrewCraft Artisan Café (Specialty Coffee)' : 'Loom & Stitch Garments (Factory SME)'}`,
+      status: 'success',
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(logs), 'Audit_Trail');
+
+    XLSX.writeFile(wb, DB_FILE_PATH);
+    return { success: true, preset };
   }
 }
