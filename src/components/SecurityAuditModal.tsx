@@ -13,6 +13,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { AuditLogEntry } from '@/lib/types';
+import { SupportedLanguage, getTranslation } from '@/lib/i18n';
 
 interface SecurityProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ interface SecurityProps {
   onUnlockSession: (pin: string) => Promise<{ success: boolean; error?: string }>;
   onRefreshSession: () => Promise<boolean>;
   auditLogs: AuditLogEntry[];
+  currentLanguage: SupportedLanguage;
 }
 
 export const SecurityAuditModal: React.FC<SecurityProps> = ({
@@ -32,7 +34,11 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
   onUnlockSession,
   onRefreshSession,
   auditLogs,
+  currentLanguage,
 }) => {
+  const t = (key: string, params?: Record<string, string | number>) =>
+    getTranslation(currentLanguage, key, params);
+
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
   const [pinLoading, setPinLoading] = useState(false);
@@ -52,7 +58,16 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
       setPinInput('');
       onClose();
     } else {
-      setPinError(res.error || 'ভুল পিন কোড! ডিফল্ট পিন: 2026');
+      setPinError(
+        res.error ||
+          (currentLanguage === 'zh'
+            ? '口令错误！默认所有者口令: 2026'
+            : currentLanguage === 'hi'
+            ? 'अमान्य पिन कोड! डिफ़ॉल्ट पिन: 2026'
+            : currentLanguage === 'bn'
+            ? 'ভুল পিন কোড! ডিফল্ট পিন: 2026'
+            : 'Invalid PIN Code! Default Owner PIN: 2026')
+      );
     }
   };
 
@@ -67,10 +82,10 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">
-                LedgerLoom সিকিউরিটি ভল্ট ও কমপ্লায়েন্স রিপোর্ট
+                {t('securityModalTitle')}
               </h3>
               <p className="text-xs text-slate-500">
-                FinTechathon 2026 • 30% Security & Compliance Deliverable Engine
+                {t('securityModalSubtitle')}
               </p>
             </div>
           </div>
@@ -92,7 +107,7 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
                 : 'border-transparent text-slate-500'
             }`}
           >
-            🔐 ৩০-মিনিট সেশন লক
+            {t('tabSessionLock')}
           </button>
           <button
             onClick={() => setActiveTab('audit_log')}
@@ -102,7 +117,7 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
                 : 'border-transparent text-slate-500'
             }`}
           >
-            📜 রিয়েল অডিট ট্রেইল (Audit Trail)
+            {t('tabAuditTrail')}
           </button>
           <button
             onClick={() => setActiveTab('report')}
@@ -112,7 +127,7 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
                 : 'border-transparent text-slate-500'
             }`}
           >
-            🛡️ সিকিউরিটি সেলফ-অ্যাসেসমেন্ট
+            {t('tabSelfAssessment')}
           </button>
         </div>
 
@@ -131,11 +146,29 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
                 <div>
                   <h4 className="text-xs font-bold text-slate-900">
                     {isUnlocked
-                      ? `ভল্ট সক্রিয়: আর ${remainingMinutes} মিনিট আনলক থাকবে`
-                      : 'ভল্ট বর্তমানে লক অবস্থায় রয়েছে'}
+                      ? currentLanguage === 'zh'
+                        ? `保险库已解锁: 剩余 ${remainingMinutes} 分钟`
+                        : currentLanguage === 'hi'
+                        ? `वॉल्ट अनलॉक है: ${remainingMinutes} मिनट शेष`
+                        : currentLanguage === 'bn'
+                        ? `ভল্ট সক্রিয়: আর ${remainingMinutes} মিনিট আনলক থাকবে`
+                        : `Vault Unlocked: ${remainingMinutes}m remaining`
+                      : currentLanguage === 'zh'
+                      ? '保险库目前处于锁定状态'
+                      : currentLanguage === 'hi'
+                      ? 'वॉल्ट वर्तमान में लॉक है'
+                      : currentLanguage === 'bn'
+                      ? 'ভল্ট বর্তমানে লক অবস্থায় রয়েছে'
+                      : 'Vault is currently locked'}
                   </h4>
                   <p className="text-[11px] text-slate-500">
-                    মালিক একবার পিন দিলে পরবর্তী ৩০ মিনিট কোনো লক চাইবে না।
+                    {currentLanguage === 'zh'
+                      ? '30分钟安全滑动窗口保护财务资金修改与真实 Excel 记账。'
+                      : currentLanguage === 'hi'
+                      ? '30-मिनट का सत्र वित्तीय डेटा में सुरक्षित प्रविष्टि सुनिश्चित करता है।'
+                      : currentLanguage === 'bn'
+                      ? 'মালিক একবার পিন দিলে পরবর্তী ৩০ মিনিট কোনো লক চাইবে না।'
+                      : '30-minute sliding window prevents repetitive PIN fatigue while safeguarding financial mutations.'}
                   </p>
                 </div>
               </div>
@@ -146,7 +179,7 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
                   className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  +৩০ মিনিট বাড়ান
+                  {t('extendSessionBtn')}
                 </button>
               )}
             </div>
@@ -154,7 +187,7 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
             {!isUnlocked && (
               <form onSubmit={handlePinSubmit} className="space-y-3 max-w-sm mx-auto text-center">
                 <label className="block text-xs font-semibold text-slate-700">
-                  মালিকের ৪-ডিজিটের সিকিউরিটি পিন দিন (ডিফল্ট: 2026)
+                  {t('enterPinLabel')}
                 </label>
                 <div className="flex justify-center">
                   <input
@@ -175,16 +208,29 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
                   disabled={pinLoading}
                   className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow transition"
                 >
-                  {pinLoading ? 'যাচাই হচ্ছে...' : '৩০ মিনিটের জন্য ভল্ট আনলক করুন'}
+                  {pinLoading ? t('syncing') : t('unlockBtn')}
                 </button>
               </form>
             )}
 
             <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-[11px] text-indigo-900 space-y-1">
-              <span className="font-bold">কেন এই ৩০ মিনিটের লক সিস্টেম?</span>
+              <span className="font-bold">
+                {currentLanguage === 'zh'
+                  ? '为什么采用 30 分钟滑动锁定架构？'
+                  : currentLanguage === 'hi'
+                  ? 'यह 30-मिनट सत्र लॉक प्रणाली क्यों महत्वपूर्ण है?'
+                  : currentLanguage === 'bn'
+                  ? 'কেন এই ৩০ মিনিটের লক সিস্টেম?'
+                  : 'Why the 30-Minute Sliding Session Lock?'}
+              </span>
               <p>
-                ক্ষুদ্র ব্যবসায় মালিক বারবার পাসওয়ার্ড দিতে বিরক্ত হন। তাই ইন্ডাস্ট্রিয়াল স্ট্যান্ডার্ড
-                অনুযায়ী ৩০ মিনিটের স্লাইডিং উইন্ডো নিশ্চিত করা হয়েছে—যা একসাথে স্বাচ্ছন্দ্য এবং আর্থিক নিরাপত্তা প্রদান করে।
+                {currentLanguage === 'zh'
+                  ? '中小微企业老板在频繁记账时不愿频繁输入密码。本系统参考银行企业网银标准，采用30分钟活跃滑动窗口，平衡日常便利与资金安全。'
+                  : currentLanguage === 'hi'
+                  ? 'छोटे व्यापारी बार-बार पासवर्ड दर्ज करने से परेशान होते हैं। अतः औद्योगिक मानकों के अनुसार 30-मिनट का सत्र रखा गया है।'
+                  : currentLanguage === 'bn'
+                  ? 'ক্ষুদ্র ব্যবসায় মালিক বারবার পাসওয়ার্ড দিতে বিরক্ত হন। তাই ইন্ডাস্ট্রিয়াল স্ট্যান্ডার্ড অনুযায়ী ৩০ মিনিটের স্লাইডিং উইন্ডো নিশ্চিত করা হয়েছে—যা একসাথে স্বাচ্ছন্দ্য এবং আর্থিক নিরাপত্তা প্রদান করে।'
+                  : 'SME factory owners dislike typing passwords on every transaction. We implement banking-grade 30-minute sliding sessions balancing usability and financial security.'}
               </p>
             </div>
           </div>
@@ -194,7 +240,7 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
         {activeTab === 'audit_log' && (
           <div className="space-y-3">
             <p className="text-xs text-slate-500">
-              Deliverable 06 Evidence: কারখানার প্রতিটি আর্থিক স্টেট পরিবর্তন ও এআই টাস্কের অপরিবর্তনীয় অডিট লগ।
+              {t('auditTabDesc')}
             </p>
             <div className="max-h-72 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs">
               {auditLogs.map((log) => (
@@ -209,11 +255,11 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
                     </div>
                     <p className="text-slate-600 text-[11px]">{log.details}</p>
                     <div className="text-[10px] text-slate-400">
-                      Actor: {log.actor} • Time: {new Date(log.timestamp).toLocaleString()}
+                      {t('auditActorLabel')}: {log.actor} • {t('auditTimeLabel')}: {new Date(log.timestamp).toLocaleString()}
                     </div>
                   </div>
                   <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[9px]">
-                    {log.status.toUpperCase()}
+                    {t('auditStatusSuccess')}
                   </span>
                 </div>
               ))}
@@ -234,41 +280,93 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
             </div>
 
             <div className="space-y-2">
-              <h5 className="font-bold text-slate-900">১. ৪-স্তরের পারমিশন টায়ার (4-Tier Permission Architecture):</h5>
+              <h5 className="font-bold text-slate-900">
+                {currentLanguage === 'zh'
+                  ? '1. 四级权限架构 (4-Tier Permission Architecture):'
+                  : currentLanguage === 'hi'
+                  ? '1. 4-स्तरीय अनुमति आर्किटेक्चर (4-Tier Permission Architecture):'
+                  : currentLanguage === 'bn'
+                  ? '১. ৪-স্তরের পারমিশন টায়ার (4-Tier Permission Architecture):'
+                  : '1. 4-Tier Permission Architecture:'}
+              </h5>
               <ul className="list-disc pl-5 space-y-1 text-slate-600">
-                <li><strong>Tier-1 (Read-Only):</strong> ড্যাশবোর্ড, ক্যাশ-ফ্লো কার্ভ এবং রেশিও এনালাইসিস সম্পূর্ণ অটোনোমাস।</li>
-                <li><strong>Tier-2 (Simulation):</strong> টার্গেট প্রফিট প্ল্যানিং ও আগাম লোন কিস্তি ক্যালকুলেটর (স্যান্ডবক্সড)।</li>
-                <li><strong>Tier-3 (Communication):</strong> বকেয়া পার্টির কাছে তাগাদা মেসেজ ড্রাফট (Human-in-the-Loop অনুমোদন আবশ্যক)।</li>
-                <li><strong>Tier-4 (Financial Mutation):</strong> এক্সেলে লেনদেন যোগ, প্রোফাইল পরিবর্তন ও ঋণ পরিশোধ রেকর্ড (৩০ মিনিটের সিকিউরিটি পিন আবশ্যক)।</li>
+                <li>
+                  <strong>Tier-1 (Read-Only):</strong>{' '}
+                  {currentLanguage === 'zh'
+                    ? '看板财务全景、预测现金流曲线和财务比率分析（全自动自主运行）。'
+                    : currentLanguage === 'hi'
+                    ? 'डैशबोर्ड, नकदी प्रवाह और अनुपात विश्लेषण (स्वायत्त)।'
+                    : currentLanguage === 'bn'
+                    ? 'ড্যাশবোর্ড, ক্যাশ-ফ্লো কার্ভ এবং রেশিও এনালাইসিস সম্পূর্ণ অটোনোমাস।'
+                    : 'Dashboard metrics, projected cash flow curve, and financial ratios (autonomous read-only).'}
+                </li>
+                <li>
+                  <strong>Tier-2 (Simulation):</strong>{' '}
+                  {currentLanguage === 'zh'
+                    ? '反推目标利润规划器与贷款月供测算模拟器（沙盒化运行）。'
+                    : currentLanguage === 'hi'
+                    ? 'लक्ष्य लाभ योजना और ऋण किस्त कैलकुलेटर (सैंडबॉक्स्ड)।'
+                    : currentLanguage === 'bn'
+                    ? 'টার্গেট প্রফিট প্ল্যানিং ও আগাম লোন কিস্তি ক্যালকুলেটর (স্যান্ডবক্সড)।'
+                    : 'Reverse target profit planner & loan amortization simulator (sandboxed calculation).'}
+                </li>
+                <li>
+                  <strong>Tier-3 (Communication):</strong>{' '}
+                  {currentLanguage === 'zh'
+                    ? '超期客户个性化催款函生成（需人类在环审核并点击复制发送）。'
+                    : currentLanguage === 'hi'
+                    ? 'बकाया राशि तगादा संदेश जनरेटर (मानव-सत्यापन आवश्यक)।'
+                    : currentLanguage === 'bn'
+                    ? 'বকেয়া পার্টির কাছে তাগাদা মেসেজ ড্রাফট (Human-in-the-Loop অনুমোদন আবশ্যক)।'
+                    : 'Overdue debtor notification drafting (Human-in-the-Loop approval required).'}
+                </li>
+                <li>
+                  <strong>Tier-4 (Financial Mutation):</strong>{' '}
+                  {currentLanguage === 'zh'
+                    ? 'Excel 表格记账写入、企业主档案修改与还款核销（强制要求 30 分钟所有者口令解锁）。'
+                    : currentLanguage === 'hi'
+                    ? 'एक्सेल में प्रविष्टि, प्रोफ़ाइल परिवर्तन व ऋण भुगतान (30-मिनट पिन आवश्यक)।'
+                    : currentLanguage === 'bn'
+                    ? 'এক্সেলে লেনদেন যোগ, প্রোফাইল পরিবর্তন ও ঋণ পরিশোধ রেকর্ড (৩০ মিনিটের সিকিউরিটি পিন আবশ্যক)।'
+                    : 'Direct Excel mutations, business profile updates, and loan payments (mandatory 30-min Owner PIN).'}
+                </li>
               </ul>
             </div>
 
             <div className="space-y-2">
-              <h5 className="font-bold text-slate-900">২. পরিচিত ঝুঁকি ও সমাধান (Known-Risk Matrix):</h5>
+              <h5 className="font-bold text-slate-900">
+                {currentLanguage === 'zh'
+                  ? '2. 已知风险与防御矩阵 (Known-Risk Defense Matrix):'
+                  : currentLanguage === 'hi'
+                  ? '2. ज्ञात जोखिम व समाधान मैट्रिक्स (Known-Risk Matrix):'
+                  : currentLanguage === 'bn'
+                  ? '২. পরিচিত ঝুঁকি ও সমাধান (Known-Risk Matrix):'
+                  : '2. Known-Risk Defense Matrix:'}
+              </h5>
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <table className="w-full text-left text-[11px]">
                   <thead className="bg-slate-100 text-slate-700 font-semibold">
                     <tr>
-                      <th className="p-2">ঝুঁকি (Known Risk)</th>
-                      <th className="p-2">প্রভাব</th>
-                      <th className="p-2">লেজারলুম ডিফেন্স সিস্টেম</th>
+                      <th className="p-2">Risk</th>
+                      <th className="p-2">Impact</th>
+                      <th className="p-2">LedgerLoom Defense System</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     <tr>
                       <td className="p-2 font-medium">Arithmetic Hallucination</td>
-                      <td className="p-2 text-rose-600">ভুল হিসাব/লস</td>
-                      <td className="p-2">ডিটারমিনিস্টিক টাইপস্ক্রিপ্ট ক্যালকুলেটর ইঞ্জিন (Zero LLM Math)।</td>
+                      <td className="p-2 text-rose-600">Calculated Errors / Loss</td>
+                      <td className="p-2">Deterministic TypeScript formula engine (Zero LLM math calculation).</td>
                     </tr>
                     <tr>
                       <td className="p-2 font-medium">PII Data Leakage</td>
-                      <td className="p-2 text-rose-600">গোপনীয়তা ভঙ্গ</td>
-                      <td className="p-2">LLM-এ পাঠানোর পূর্বে মোবাইল ও ট্যাক্স আইডি স্বয়ংক্রিয় মাস্কিং।</td>
+                      <td className="p-2 text-rose-600">Privacy Breach</td>
+                      <td className="p-2">Automated client phone number & tax masking prior to LLM reasoning.</td>
                     </tr>
                     <tr>
                       <td className="p-2 font-medium">Accidental Cash Mutation</td>
-                      <td className="p-2 text-rose-600">ভুল এন্ট্রি</td>
-                      <td className="p-2">OCR মেমোগুলো প্রথমে Staging টেবিলে থাকে, মালিক Approve করলে এক্সেলে যায়।</td>
+                      <td className="p-2 text-rose-600">Invalid Records</td>
+                      <td className="p-2">OCR scanned memos held in Staging until owner explicitly verifies & approves.</td>
                     </tr>
                   </tbody>
                 </table>

@@ -136,7 +136,7 @@ export const Header: React.FC<HeaderProps> = ({
                 title="Loom & Stitch Garments (Textile Factory SME)"
               >
                 <span>🏭</span>
-                <span className="hidden sm:inline">গার্মেন্টস ফ্যাক্টরি</span>
+                <span className="hidden sm:inline">{t('scenarioGarments')}</span>
               </button>
               <button
                 type="button"
@@ -149,7 +149,7 @@ export const Header: React.FC<HeaderProps> = ({
                 title="BrewCraft Artisan Café (Competition Coffee Shop Scenario)"
               >
                 <span>☕</span>
-                <span className="hidden sm:inline">ক্যাফে ডেমো (Café)</span>
+                <span className="hidden sm:inline">{t('scenarioCafe')}</span>
               </button>
             </div>
 

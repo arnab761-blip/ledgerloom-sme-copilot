@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { LoanLiability, BusinessProfile } from '@/lib/types';
 import { AccountingEngine } from '@/lib/accounting-engine';
+import { SupportedLanguage, getTranslation } from '@/lib/i18n';
 
 interface LoanProps {
   loans: LoanLiability[];
@@ -20,6 +21,7 @@ interface LoanProps {
   onRecordPayment: (id: string, amount: number) => Promise<boolean>;
   isUnlocked: boolean;
   onRequireUnlock: () => void;
+  currentLanguage: SupportedLanguage;
 }
 
 export const LoanReconciliation: React.FC<LoanProps> = ({
@@ -28,7 +30,11 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
   onRecordPayment,
   isUnlocked,
   onRequireUnlock,
+  currentLanguage,
 }) => {
+  const t = (key: string, params?: Record<string, string | number>) =>
+    getTranslation(currentLanguage, key, params);
+
   const [selectedLoan, setSelectedLoan] = useState<LoanLiability | null>(loans[0] || null);
   const [payAmount, setPayAmount] = useState('');
   const [paySuccess, setPaySuccess] = useState('');
@@ -54,9 +60,15 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
 
     const success = await onRecordPayment(selectedLoan.id, Number(payAmount));
     if (success) {
-      setPaySuccess(
-        `সফলভাবে ${Number(payAmount).toLocaleString()} ${profile.currency} ঋণ পরিশোধ ও রিকনসাইল করা হয়েছে!`
-      );
+      const msg =
+        currentLanguage === 'zh'
+          ? `已成功记账还款 ${Number(payAmount).toLocaleString()} ${profile.currency} 并完成贷款对账核销！`
+          : currentLanguage === 'hi'
+          ? `सफलतापूर्वक ${Number(payAmount).toLocaleString()} ${profile.currency} की किस्त दर्ज की गई और ऋण का समाधान किया गया!`
+          : currentLanguage === 'bn'
+          ? `সফলভাবে ${Number(payAmount).toLocaleString()} ${profile.currency} ঋণ পরিশোধ ও রিকনসাইল করা হয়েছে!`
+          : `Successfully recorded repayment of ${Number(payAmount).toLocaleString()} ${profile.currency} and updated amortization ledger!`;
+      setPaySuccess(msg);
       setPayAmount('');
       setTimeout(() => setPaySuccess(''), 4000);
     }
@@ -72,34 +84,38 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            মোট অবশিষ্ট ঋণ (Remaining Debt)
+            {t('totalRemainingDebtCard')}
           </span>
           <div className="mt-2 text-2xl font-black text-slate-900">
             {totalRemaining.toLocaleString()} {profile.currency}
           </div>
-          <p className="text-xs text-slate-500 mt-1">সক্রিয় ঋণ সংখ্যা: {activeLoans.length}টি</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {t('activeLoansCountCard')}: {activeLoans.length}
+          </p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            মাসিক কিস্তির চাপ (Monthly EMI Obligation)
+            {t('monthlyEmiBurdenCard')}
           </span>
           <div className="mt-2 text-2xl font-black text-amber-600">
             {totalEMI.toLocaleString()} {profile.currency}
           </div>
-          <p className="text-xs text-slate-500 mt-1">কারখানার প্রতি মাসের ফিক্সড দায়বদ্ধতা</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {t('monthlyFixedCostsGroup')}
+          </p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            ডিটারমিনিস্টিক ক্যালকুলেটর ইঞ্জিন
+            {t('zeroHallucinationCard')}
           </span>
           <div className="mt-2 text-sm font-bold text-emerald-600 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4" />
-            100% Zero-Hallucination Math
+            100% Deterministic Math
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            সুদ ও কিস্তির হিসাব AI মুখে বলে না, কোড সরাসরি এক্সিকিউট করে
+            FinTechathon Zero-Hallucination Amortization Formula
           </p>
         </div>
       </div>
@@ -111,10 +127,10 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
             <div>
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <Landmark className="w-5 h-5 text-indigo-600" />
-                সক্রিয় ঋণ ও কিস্তির হিসাব (Loan Reconciliation)
+                {t('loansDashboardTitle')}
               </h3>
               <p className="text-xs text-slate-500">
-                ঋণ গ্রহণ, পরিশোধ এবং অবশিষ্ট ব্যালেন্সের নিখুঁত রিকনসিলিয়েশন
+                {t('loansDashboardDesc')}
               </p>
             </div>
           </div>
@@ -130,12 +146,12 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
             <table className="w-full text-left text-xs text-slate-700">
               <thead className="bg-slate-100 text-slate-700 uppercase font-semibold">
                 <tr>
-                  <th className="px-3 py-2.5">ঋণের বিবরণ / ব্যাংক</th>
-                  <th className="px-3 py-2.5 text-right">মূল ঋণ</th>
-                  <th className="px-3 py-2.5 text-right">সুদের হার</th>
-                  <th className="px-3 py-2.5 text-right">মাসিক কিস্তি (EMI)</th>
-                  <th className="px-3 py-2.5 text-right">অবশিষ্ট ব্যালেন্স</th>
-                  <th className="px-3 py-2.5">পরবর্তী তারিখ</th>
+                  <th className="px-3 py-2.5">{t('lenderTh')}</th>
+                  <th className="px-3 py-2.5 text-right">{t('principalTh')}</th>
+                  <th className="px-3 py-2.5 text-right">{t('interestRateTh')}</th>
+                  <th className="px-3 py-2.5 text-right">{t('simMonthlyEmi')}</th>
+                  <th className="px-3 py-2.5 text-right">{t('remainingTh')}</th>
+                  <th className="px-3 py-2.5">{t('nextDueTh')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -172,14 +188,14 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
           {selectedLoan && (
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
               <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
-                কিস্তি বা ঋণ পরিশোধ রেকর্ড করুন: {selectedLoan.lenderName}
+                {t('payEmiModalBtn')}: {selectedLoan.lenderName}
               </h4>
               <form onSubmit={handlePaymentSubmit} className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="number"
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
-                  placeholder={`কিস্তির অঙ্ক (যেমন: ${selectedLoan.monthlyEMI})`}
+                  placeholder={`${t('simMonthlyEmi')}: ${selectedLoan.monthlyEMI}`}
                   className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 flex-1"
                 />
                 <button
@@ -187,7 +203,7 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
-                  পরিশোধ রেকর্ড ও ব্যালেন্স আপডেট
+                  {t('payEmiModalBtn')}
                 </button>
               </form>
             </div>
@@ -199,16 +215,16 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Calculator className="w-5 h-5 text-indigo-600" />
-              <h3 className="text-base font-bold text-slate-900">লোন কিস্তি ক্যালকুলেটর</h3>
+              <h3 className="text-base font-bold text-slate-900">{t('prepaymentSimTitle')}</h3>
             </div>
             <p className="text-xs text-slate-500 mb-4">
-              নতুন লোন বা ক্রেডিট লাইন নেওয়ার পূর্বে সঠিক মাসিক কিস্তি হিসাব করুন।
+              {t('prepaymentSimDesc')}
             </p>
 
             <div className="space-y-3">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  লোনের পরিমাণ ({profile.currency})
+                  {t('principalTh')} ({profile.currency})
                 </label>
                 <input
                   type="number"
@@ -220,7 +236,7 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
 
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  বার্ষিক সুদের হার (%)
+                  {t('interestRateTh')} (%)
                 </label>
                 <input
                   type="number"
@@ -233,7 +249,7 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
 
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  মেয়াদ (মাস)
+                  {t('tenureTh')}
                 </label>
                 <input
                   type="number"
@@ -247,17 +263,17 @@ export const LoanReconciliation: React.FC<LoanProps> = ({
 
           <div className="mt-4 pt-4 border-t border-slate-100 bg-indigo-50/60 p-4 rounded-xl border border-indigo-100">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-indigo-900 font-medium">মাসিক কিস্তি (EMI):</span>
+              <span className="text-xs text-indigo-900 font-medium">{t('simMonthlyEmi')}:</span>
               <span className="text-base font-black text-indigo-600">
                 {simResult.monthlyEMI.toLocaleString()} {profile.currency}
               </span>
             </div>
             <div className="flex items-center justify-between mt-1 text-[11px] text-slate-600">
-              <span>মোট পরিশোধ:</span>
+              <span>{t('simTotalRepay')}:</span>
               <span>{simResult.totalRepayment.toLocaleString()} {profile.currency}</span>
             </div>
             <div className="flex items-center justify-between text-[11px] text-slate-600">
-              <span>মোট সুদ (Interest):</span>
+              <span>{t('simTotalInterest')}:</span>
               <span className="text-rose-600 font-semibold">
                 {simResult.totalInterest.toLocaleString()} {profile.currency}
               </span>

@@ -12,6 +12,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { DebtorRecord, BusinessProfile } from '@/lib/types';
+import { SupportedLanguage, getTranslation } from '@/lib/i18n';
 
 interface DebtorsProps {
   debtors: DebtorRecord[];
@@ -20,6 +21,7 @@ interface DebtorsProps {
   onAddDebtor: (debtor: any) => Promise<boolean>;
   isUnlocked: boolean;
   onRequireUnlock: () => void;
+  currentLanguage: SupportedLanguage;
 }
 
 export const DebtorsAlerts: React.FC<DebtorsProps> = ({
@@ -29,7 +31,11 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
   onAddDebtor,
   isUnlocked,
   onRequireUnlock,
+  currentLanguage,
 }) => {
+  const t = (key: string, params?: Record<string, string | number>) =>
+    getTranslation(currentLanguage, key, params);
+
   const [selectedDebtorForDraft, setSelectedDebtorForDraft] = useState<DebtorRecord | null>(null);
   const [draftTone, setDraftTone] = useState<'polite' | 'formal' | 'urgent'>('polite');
   const [copied, setCopied] = useState(false);
@@ -47,13 +53,44 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
   const highRiskList = receivables.filter((d) => d.amount >= (d.alertThreshold || threshold));
 
   const generateMessageDraft = (d: DebtorRecord, tone: 'polite' | 'formal' | 'urgent') => {
+    if (currentLanguage === 'zh') {
+      if (tone === 'urgent') {
+        return `加急账单催缴通知: 尊敬的 (${d.partyName})，关于由【${profile.businessName}】交付的订单，您尚有未结款项共计 ${d.amount.toLocaleString()} ${profile.currency}，现已超出约定付款期限（到期日: ${d.dueDate}）。为保障工厂工人工资结算及正常运转，请于未来 48 小时内完成结算。致礼，${profile.businessName}。`;
+      }
+      if (tone === 'formal') {
+        return `尊敬的 (${d.partyName})，您好！${profile.businessName} 财务部门特此函告，您处尚有未结算账款 ${d.amount.toLocaleString()} ${profile.currency}（约定付款日: ${d.dueDate}）。请于银行营业时间内安排转账结算。顺颂商祺。`;
+      }
+      return `您好 (${d.partyName})！温馨提醒您，上期交付的订单款项 ${d.amount.toLocaleString()} ${profile.currency} 尚未结清。我们下周将订购新一批生产物料，若您能协助尽快安排付款将不胜感激。祝商祺！`;
+    }
+
+    if (currentLanguage === 'hi') {
+      if (tone === 'urgent') {
+        return `अति-आवश्यक बकाया नोटिस: प्रिय (${d.partyName}), ${profile.businessName} से पिछली डिलीवरी के विरुद्ध आपका कुल बकाया ${d.amount.toLocaleString()} ${profile.currency} नियत तिथि (${d.dueDate}) पार कर चुका है। वेतन और नियमित खर्चों के लिए कृपया आगामी 48 घंटों में भुगतान सुनिश्चित करें। धन्यवाद, ${profile.businessName}।`;
+      }
+      if (tone === 'formal') {
+        return `प्रिय (${d.partyName}), नमस्कार। ${profile.businessName} के लेखा विभाग से सूचित किया जाता है कि आपका बकाया ${d.amount.toLocaleString()} ${profile.currency} देय है (अंतिम तिथि: ${d.dueDate})। कृपया बैंकिंग समय में भुगतान की व्यवस्था करें। धन्यवाद।`;
+      }
+      return `नमस्ते (${d.partyName}), आशा है आप सकुशल हैं। पिछले ऑर्डर के बकाया ${d.amount.toLocaleString()} ${profile.currency} के संदर्भ में यह अनुस्मारक है। अगले सप्ताह सामग्री खरीदनी है, अतः शीघ्र भुगतान होने पर अत्यंत सुविधा होगी। धन्यवाद!`;
+    }
+
+    if (currentLanguage === 'bn') {
+      if (tone === 'urgent') {
+        return `জরুরি বকেয়া নোটিশ: জনাব/মালিকপক্ষ (${d.partyName}), ${profile.businessName}-এর পূর্ববর্তী ডেলিভারির বিপরীতে আপনার নিকট সর্বমোট ${d.amount.toLocaleString()} ${profile.currency} পাওনা রয়েছে, যা নির্ধারিত মেয়াদ (${d.dueDate}) অতিক্রান্ত করেছে। কারখানার কর্মীদের চলতি মাসের বেতন ও চলতি খরচের জন্য আগামী ৪৮ ঘণ্টার মধ্যে উক্ত টাকা পরিশোধের বিশেষ অনুরোধ রইল। ধন্যবাদান্তে, ${profile.businessName}।`;
+      }
+      if (tone === 'formal') {
+        return `প্রিয় (${d.partyName}), সালাম ও শুভেচ্ছা রইল। আশা করি ভালো আছেন। ${profile.businessName}-এর অ্যাকাউন্টস বিভাগ থেকে জানানো যাচ্ছে যে, আপনার নিকট ${d.amount.toLocaleString()} ${profile.currency} বকেয়া পাওনা রয়েছে (বিল মেয়াদ: ${d.dueDate})। দয়া করে ব্যাংকিং সময়ের মধ্যে পেমেন্টটি নিশ্চিত করার ব্যবস্থা গ্রহণ করবেন। ধন্যবাদ।`;
+      }
+      return `প্রিয় ভাই (${d.partyName}), শুভেচ্ছা জানবেন। আমাদের কারখানার শেষ অর্ডারের বাকি বিল ${d.amount.toLocaleString()} ${profile.currency}-এর বিষয়ে একটু তাগাদা দিতে মেসেজ করলাম। আমাদের আগামী সপ্তাহে নতুন ফেব্রিক অর্ডার করতে হবে, তাই বিলটা ক্লিয়ার করে দিলে খুব উপকৃত হতাম। ভালো থাকবেন!`;
+    }
+
+    // Default: English
     if (tone === 'urgent') {
-      return `জরুরি বকেয়া নোটিশ: জনাব/মালিকপক্ষ (${d.partyName}), ${profile.businessName}-এর পূর্ববর্তী ডেলিভারির বিপরীতে আপনার নিকট সর্বমোট ${d.amount.toLocaleString()} ${profile.currency} পাওনা রয়েছে, যা নির্ধারিত মেয়াদ (${d.dueDate}) অতিক্রান্ত করেছে। কারখানার কর্মীদের চলতি মাসের বেতন ও চলতি খরচের জন্য আগামী ৪৮ ঘণ্টার মধ্যে উক্ত টাকা পরিশোধের বিশেষ অনুরোধ রইল। ধন্যবাদান্তে, ${profile.businessName}।`;
+      return `URGENT COLLECTION NOTICE: Dear (${d.partyName}), regarding order deliveries from ${profile.businessName}, an outstanding balance of ${d.amount.toLocaleString()} ${profile.currency} is past due (Due Date: ${d.dueDate}). To meet upcoming payroll and supplier obligations, kindly remit payment within 48 hours. Best regards, ${profile.businessName}.`;
     }
     if (tone === 'formal') {
-      return `প্রিয় (${d.partyName}), সালাম ও শুভেচ্ছা রইল। আশা করি ভালো আছেন। ${profile.businessName}-এর অ্যাকাউন্টস বিভাগ থেকে জানানো যাচ্ছে যে, আপনার নিকট ${d.amount.toLocaleString()} ${profile.currency} বকেয়া পাওনা রয়েছে (বিল মেয়াদ: ${d.dueDate})। দয়া করে ব্যাংকিং সময়ের মধ্যে পেমেন্টটি নিশ্চিত করার ব্যবস্থা গ্রহণ করবেন। ধন্যবাদ।`;
+      return `Dear (${d.partyName}), Greetings from the finance department of ${profile.businessName}. This is a formal statement regarding your outstanding balance of ${d.amount.toLocaleString()} ${profile.currency} (Due Date: ${d.dueDate}). Kindly process payment during banking hours. Thank you.`;
     }
-    return `প্রিয় ভাই (${d.partyName}), শুভেচ্ছা জানবেন। আমাদের কারখানার শেষ অর্ডারের বাকি বিল ${d.amount.toLocaleString()} ${profile.currency}-এর বিষয়ে একটু তাগাদা দিতে মেসেজ করলাম। আমাদের আগামী সপ্তাহে নতুন ফেব্রিক অর্ডার করতে হবে, তাই বিলটা ক্লিয়ার করে দিলে খুব উপকৃত হতাম। ভালো থাকবেন!`;
+    return `Hello (${d.partyName}), hope you are well! Just a friendly reminder regarding the pending balance of ${d.amount.toLocaleString()} ${profile.currency} for the recent delivery from ${profile.businessName}. We are restocking raw materials next week and would appreciate settling this invoice. Thank you!`;
   };
 
   const handleCopyMessage = (text: string) => {
@@ -80,7 +117,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
       dueDate: dueDate || new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
       status: Number(amount) >= threshold ? 'overdue' : 'pending',
       alertThreshold: threshold,
-      notes: notes || 'ওয়েব ফর্ম থেকে যুক্ত নতুন বকেয়া',
+      notes: notes || 'Client invoice ledger',
     });
 
     setShowAddModal(false);
@@ -97,10 +134,10 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
         <div>
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <ShieldAlert className="w-6 h-6 text-rose-600" />
-            বকেয়া ও বাকি টাকা রিমাইন্ডার ইঞ্জিন (Receivables Monitor)
+            {t('receivablesMonitorTitle')}
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            কোড লজিক: কারো কাছে বকেয়া <strong>{threshold.toLocaleString()} {profile.currency}</strong> বা তার বেশি হলে স্বয়ংক্রিয়ভাবে তাগাদা অ্যালার্ট জারি হবে।
+            {t('receivablesMonitorDesc')}
           </p>
         </div>
         <button
@@ -108,7 +145,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition"
         >
           <PlusCircle className="w-4 h-4" />
-          নতুন বকেয়া / বাকি খাতা এন্ট্রি
+          {t('newDebtorBtnLabel')}
         </button>
       </div>
 
@@ -117,7 +154,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
         <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl space-y-3">
           <div className="flex items-center gap-2 text-rose-800 text-sm font-bold">
             <AlertTriangle className="w-4 h-4 text-rose-600" />
-            সতর্কতা: {highRiskList.length}টি একাউন্টে বকেয়ার পরিমাণ থ্রেশহোল্ড (৩০,০০০+) অতিক্রম করেছে!
+            {t('debtorsThresholdAlert', { count: highRiskList.length })}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -130,14 +167,14 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-sm text-slate-900">{d.partyName}</span>
                     <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold">
-                      বকেয়া: {d.amount.toLocaleString()} {profile.currency}
+                      {d.amount.toLocaleString()} {profile.currency}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
                     <PhoneCall className="w-3 h-3 text-slate-400" /> {d.contactNumber}
                   </p>
                   <p className="text-[11px] text-rose-600 font-medium mt-1">
-                    পেমেন্টের শেষ তারিখ ছিল: {d.dueDate} ({d.status.toUpperCase()})
+                    {t('dueDateTh')}: {d.dueDate} ({d.status.toUpperCase()})
                   </p>
                   {d.notes && <p className="text-[11px] text-slate-500 mt-1 italic">{d.notes}</p>}
                 </div>
@@ -148,7 +185,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
                     className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition"
                   >
                     <Send className="w-3 h-3" />
-                    তাগাদা মেসেজ ড্রাফট করুন
+                    {t('draftNoticeBtn')}
                   </button>
                   <button
                     onClick={async () => {
@@ -161,7 +198,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
                     className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
                   >
                     <CheckCircle className="w-3.5 h-3.5" />
-                    আদায় সম্পন্ন
+                    {t('settledBtn')}
                   </button>
                 </div>
               </div>
@@ -173,19 +210,18 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
       {/* Full Receivables Table */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <h3 className="text-sm font-bold text-slate-900 mb-4">
-          সকল পাওনাদার ও বকেয়া খাতা তালিকা (Total: {receivables.length})
+          {t('allDebtorsTitle')} ({receivables.length})
         </h3>
         <div className="overflow-x-auto border border-slate-200 rounded-xl">
           <table className="w-full text-left text-xs text-slate-700">
             <thead className="bg-slate-100 text-slate-700 uppercase font-semibold">
               <tr>
-                <th className="px-3 py-2.5">Party Name</th>
-                <th className="px-3 py-2.5">Contact</th>
-                <th className="px-3 py-2.5 text-right">Amount ({profile.currency})</th>
-                <th className="px-3 py-2.5">Due Date</th>
-                <th className="px-3 py-2.5">Risk Level</th>
-                <th className="px-3 py-2.5">Status</th>
-                <th className="px-3 py-2.5 text-right">Action</th>
+                <th className="px-3 py-2.5">{t('debtorNameTh')}</th>
+                <th className="px-3 py-2.5">{t('contactTh')}</th>
+                <th className="px-3 py-2.5 text-right">{t('amountDueTh')} ({profile.currency})</th>
+                <th className="px-3 py-2.5">{t('dueDateTh')}</th>
+                <th className="px-3 py-2.5">{t('statusTh')}</th>
+                <th className="px-3 py-2.5 text-right">{t('actionsTh')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -204,17 +240,6 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
                     </td>
                     <td className="px-3 py-2.5">{d.dueDate}</td>
                     <td className="px-3 py-2.5">
-                      {isOver ? (
-                        <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold text-[10px]">
-                          ⚠️ ঝুঁকিপূর্ণ (&gt;30k)
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px]">
-                          স্বাভাবিক
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5">
                       <span
                         className={`px-2 py-0.5 rounded-full font-semibold text-[10px] ${
                           d.status === 'settled'
@@ -224,7 +249,11 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
                             : 'bg-amber-100 text-amber-700'
                         }`}
                       >
-                        {d.status}
+                        {d.status === 'settled'
+                          ? t('settledBadge')
+                          : d.status === 'overdue'
+                          ? t('overdueBadge')
+                          : t('pendingBadge')}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-right space-x-2">
@@ -232,7 +261,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
                         onClick={() => setSelectedDebtorForDraft(d)}
                         className="text-indigo-600 hover:text-indigo-800 font-semibold"
                       >
-                        মেসেজ
+                        {t('draftNoticeBtn')}
                       </button>
                       {d.status !== 'settled' && (
                         <button
@@ -245,7 +274,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
                           }}
                           className="text-emerald-600 hover:text-emerald-800 font-semibold"
                         >
-                          পরিশোধ
+                          {t('settledBtn')}
                         </button>
                       )}
                     </td>
@@ -263,7 +292,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900">
-                তাগাদা ড্রাফট: {selectedDebtorForDraft.partyName}
+                {t('overdueNoticeTitle')}: {selectedDebtorForDraft.partyName}
               </h3>
               <button
                 onClick={() => setSelectedDebtorForDraft(null)}
@@ -283,7 +312,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
                     : 'bg-slate-50 text-slate-700'
                 }`}
               >
-                ভদ্র ও বন্ধুত্বপূর্ণ
+                {t('tonePolite')}
               </button>
               <button
                 onClick={() => setDraftTone('formal')}
@@ -293,7 +322,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
                     : 'bg-slate-50 text-slate-700'
                 }`}
               >
-                অফিসিয়াল ফরমাল
+                {t('toneFormal')}
               </button>
               <button
                 onClick={() => setDraftTone('urgent')}
@@ -303,7 +332,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
                     : 'bg-slate-50 text-slate-700'
                 }`}
               >
-                জরুরি নোটিশ (Urgent)
+                {t('toneUrgent')}
               </button>
             </div>
 
@@ -314,7 +343,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
 
             <div className="flex items-center justify-between pt-2">
               <span className="text-[11px] text-slate-500">
-                প্রাপক নম্বর: {selectedDebtorForDraft.contactNumber}
+                {t('contactTh')}: {selectedDebtorForDraft.contactNumber}
               </span>
               <button
                 onClick={() =>
@@ -323,7 +352,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow"
               >
                 {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied ? 'কপি সম্পন্ন!' : 'মেসেজ কপি করুন (WhatsApp/SMS)'}
+                {copied ? t('noticeCopiedSuccess') : t('copyNoticeButton')}
               </button>
             </div>
           </div>
@@ -335,7 +364,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900">নতুন বাকি খাতা এন্ট্রি</h3>
+              <h3 className="text-base font-bold text-slate-900">{t('newDebtorBtnLabel')}</h3>
               <button
                 onClick={() => setShowAddModal(false)}
                 className="text-slate-400 hover:text-slate-600 text-sm font-bold"
@@ -347,20 +376,20 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
             <form onSubmit={handleCreateDebtor} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  পার্টির নাম *
+                  {t('debtorNameTh')} *
                 </label>
                 <input
                   type="text"
                   value={partyName}
                   onChange={(e) => setPartyName(e.target.value)}
-                  placeholder="যেমন: বেঙ্গল ফ্যাশনস"
+                  placeholder="e.g. Apex Outfits / Metro Mart"
                   required
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                 />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  মোবাইল নম্বর
+                  {t('contactTh')}
                 </label>
                 <input
                   type="text"
@@ -372,20 +401,20 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  বাকি টাকার পরিমাণ ({profile.currency}) *
+                  {t('amountDueTh')} ({profile.currency}) *
                 </label>
                 <input
                   type="number"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  placeholder="যেমন: 35000"
+                  placeholder="35000"
                   required
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                 />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  পরিশোধের শেষ তারিখ (Due Date)
+                  {t('dueDateTh')}
                 </label>
                 <input
                   type="date"
@@ -400,7 +429,7 @@ export const DebtorsAlerts: React.FC<DebtorsProps> = ({
                   type="submit"
                   className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow"
                 >
-                  সংরক্ষণ করুন (Save to Debtors Sheet)
+                  {t('saveToExcelBtn')}
                 </button>
               </div>
             </form>

@@ -14,6 +14,7 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import { BusinessProfile, Transaction } from '@/lib/types';
+import { SupportedLanguage, getTranslation } from '@/lib/i18n';
 
 interface DataEntryProps {
   profile: BusinessProfile;
@@ -23,6 +24,7 @@ interface DataEntryProps {
   onAddTransaction: (tx: any) => Promise<boolean>;
   isUnlocked: boolean;
   onRequireUnlock: () => void;
+  currentLanguage: SupportedLanguage;
 }
 
 export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
@@ -33,7 +35,11 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
   onAddTransaction,
   isUnlocked,
   onRequireUnlock,
+  currentLanguage,
 }) => {
+  const t = (key: string, params?: Record<string, string | number>) =>
+    getTranslation(currentLanguage, key, params);
+
   const [activeSubTab, setActiveSubTab] = useState<'profile' | 'new_tx' | 'sheet_view'>('new_tx');
 
   // New Transaction Form State
@@ -60,7 +66,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
     }
 
     if (!txAmount || Number(txAmount) <= 0) {
-      alert('সঠিক টাকার পরিমাণ দিন!');
+      alert(currentLanguage === 'zh' ? '请输入有效金额！' : currentLanguage === 'hi' ? 'कृपया मान्य राशि दर्ज करें!' : currentLanguage === 'bn' ? 'সঠিক টাকার পরিমাণ দিন!' : 'Please enter a valid amount!');
       return;
     }
 
@@ -73,7 +79,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
       category: txCategory,
       costType: txCostType,
       amount: Number(txAmount),
-      description: txDescription || `${txCategory} লেনদেন`,
+      description: txDescription || `${txCategory}`,
       partyName: txPartyName,
       paymentMethod: txPaymentMethod,
       status: 'approved',
@@ -82,7 +88,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
 
     setTxLoading(false);
     if (success) {
-      setTxSuccessMessage('সফলভাবে এক্সেলে (Excel Database) যুক্ত হয়েছে!');
+      setTxSuccessMessage(t('saveSuccessMsg'));
       setTxAmount('');
       setTxDescription('');
       setTxPartyName('');
@@ -119,7 +125,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
           }`}
         >
           <PlusCircle className="w-4 h-4" />
-          নতুন আয়/ব্যয় এন্ট্রি (Web to Excel)
+          {t('newTxSubTab')}
         </button>
         <button
           onClick={() => setActiveSubTab('profile')}
@@ -130,7 +136,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
           }`}
         >
           <Building className="w-4 h-4" />
-          ব্যবসার প্রোফাইল ও ফিক্সড কস্ট
+          {t('profileSubTab')}
         </button>
         <button
           onClick={() => setActiveSubTab('sheet_view')}
@@ -141,7 +147,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
           }`}
         >
           <FileSpreadsheet className="w-4 h-4" />
-          লাইভ এক্সেল স্প্রেডশীট ভিউয়ার
+          {t('sheetViewSubTab')}
         </button>
       </div>
 
@@ -152,10 +158,10 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
             <div className="mb-6">
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <PlusCircle className="w-5 h-5 text-indigo-600" />
-                ওয়েব ফর্ম থেকে রিয়েল-টাইম এক্সেল এন্ট্রি
+                {t('webToExcelTitle')}
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                মালিক এখানে যা লিখবেন, তা সরাসরি ব্যাকএন্ডের এক্সেল ফাইলের (Excel Database) নির্দিষ্ট কলামে সেভ হবে।
+                {t('webToExcelDesc')}
               </p>
             </div>
 
@@ -182,7 +188,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                       : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                   }`}
                 >
-                  🟢 আয় / বিক্রয় (Income)
+                  {t('incomeBtn')}
                 </button>
                 <button
                   type="button"
@@ -197,7 +203,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                       : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                   }`}
                 >
-                  🔴 ব্যয় / খরচ (Expense)
+                  {t('expenseBtn')}
                 </button>
               </div>
 
@@ -205,20 +211,22 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    টাকার পরিমাণ ({profile.currency}) *
+                    {t('amountLabel')} ({profile.currency}) *
                   </label>
                   <input
                     type="number"
                     value={txAmount}
                     onChange={(e) => setTxAmount(e.target.value)}
-                    placeholder="যেমন: 25000"
+                    placeholder="25000"
                     required
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">ক্যাটাগরি</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    {t('categoryLabel')}
+                  </label>
                   <select
                     value={txCategory}
                     onChange={(e) => {
@@ -234,19 +242,19 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                   >
                     {txType === 'income' ? (
                       <>
-                        <option value="sales">পণ্য বিক্রয় (Sales / Delivery)</option>
-                        <option value="advance">কাস্টমার অগ্রিম (Customer Advance)</option>
-                        <option value="other_income">অন্যান্য আয়</option>
+                        <option value="sales">{currentLanguage === 'zh' ? '销售收入 (Sales)' : currentLanguage === 'hi' ? 'बिक्री आय (Sales)' : currentLanguage === 'bn' ? 'পণ্য বিক্রয় (Sales)' : 'Sales & Revenue'}</option>
+                        <option value="advance">{currentLanguage === 'zh' ? '客户预收款 (Customer Advance)' : currentLanguage === 'hi' ? 'अग्रिम भुगतान (Advance)' : currentLanguage === 'bn' ? 'কাস্টমার অগ্রিম (Customer Advance)' : 'Customer Advance'}</option>
+                        <option value="other_income">{currentLanguage === 'zh' ? '其他营业收入' : currentLanguage === 'hi' ? 'अन्य आय' : currentLanguage === 'bn' ? 'অন্যান্য আয়' : 'Other Income'}</option>
                       </>
                     ) : (
                       <>
-                        <option value="raw_material">কাঁচামাল / ফেব্রিক ক্রয় (Fabric / Raw Material)</option>
-                        <option value="salary">কর্মী ও শ্রমিকের বেতন (Salaries - Fixed)</option>
-                        <option value="utility">কারেন্ট বিল / গ্যাস / পানি (Utilities - Fixed)</option>
-                        <option value="rent">কারখানার ভাড়া (Factory Rent - Fixed)</option>
-                        <option value="maintenance">মেশিনারি সার্ভিসিং / পার্টস (Maintenance)</option>
-                        <option value="packaging">প্যাকেজিং ও পরিবহন (Packaging / Transport)</option>
-                        <option value="other_expense">অন্যান্য ব্যয়</option>
+                        <option value="raw_material">{currentLanguage === 'zh' ? '原料辅料采购 (Raw Materials)' : currentLanguage === 'hi' ? 'कच्चा माल / कपड़ा' : currentLanguage === 'bn' ? 'কাঁচামাল / ফেব্রিক ক্রয়' : 'Raw Materials & Inventory'}</option>
+                        <option value="salary">{currentLanguage === 'zh' ? '工人工资 (Salaries - 固定)' : currentLanguage === 'hi' ? 'कर्मचारी वेतन (Salaries)' : currentLanguage === 'bn' ? 'কর্মী ও শ্রমিকের বেতন (Fixed)' : 'Worker Salaries (Fixed)'}</option>
+                        <option value="utility">{currentLanguage === 'zh' ? '水电动力费 (Utilities - 固定)' : currentLanguage === 'hi' ? 'बिजली व पानी बिल (Utilities)' : currentLanguage === 'bn' ? 'কারেন্ট বিল / গ্যাস / পানি (Fixed)' : 'Utilities & Power (Fixed)'}</option>
+                        <option value="rent">{currentLanguage === 'zh' ? '厂房租金 (Rent - 固定)' : currentLanguage === 'hi' ? 'किराया (Rent)' : currentLanguage === 'bn' ? 'কারখানার ভাড়া (Fixed)' : 'Facility Rent (Fixed)'}</option>
+                        <option value="maintenance">{currentLanguage === 'zh' ? '设备维修保养 (Maintenance)' : currentLanguage === 'hi' ? 'रखरखाव (Maintenance)' : currentLanguage === 'bn' ? 'মেশিনারি সার্ভিসিং (Maintenance)' : 'Equipment Maintenance'}</option>
+                        <option value="packaging">{currentLanguage === 'zh' ? '包装与物流配送 (Logistics)' : currentLanguage === 'hi' ? 'पैकेजिंग व परिवहन' : currentLanguage === 'bn' ? 'প্যাকেজিং ও পরিবহন' : 'Packaging & Shipping'}</option>
+                        <option value="other_expense">{currentLanguage === 'zh' ? '其他杂费开支' : currentLanguage === 'hi' ? 'अन्य व्यय' : currentLanguage === 'bn' ? 'অন্যান্য ব্যয়' : 'Other Expenses'}</option>
                       </>
                     )}
                   </select>
@@ -257,27 +265,27 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    খরচের ধরন (Cost Type)
+                    {t('costTypeLabel')}
                   </label>
                   <select
                     value={txCostType}
                     onChange={(e) => setTxCostType(e.target.value as any)}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="variable">ভ্যারিয়েবল কস্ট (পণ্য উৎপাদনের সাথে পরিবর্তনশীল)</option>
-                    <option value="fixed">ফিক্সড কস্ট (স্থায়ী ব্যয় যেমন বেতন/ভাড়া/বিল)</option>
+                    <option value="variable">{t('variableCostOption')}</option>
+                    <option value="fixed">{t('fixedCostOption')}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    পার্টি / কাস্টমার / সাপ্লায়ারের নাম
+                    {t('partyLabel')}
                   </label>
                   <input
                     type="text"
                     value={txPartyName}
                     onChange={(e) => setTxPartyName(e.target.value)}
-                    placeholder="যেমন: ঢাকা ফ্যাশন হাব"
+                    placeholder="e.g. Apex Outfits / Metro Mart"
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -287,29 +295,29 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    পেমেন্ট মাধ্যম
+                    {t('paymentMethodLabel')}
                   </label>
                   <select
                     value={txPaymentMethod}
                     onChange={(e) => setTxPaymentMethod(e.target.value as any)}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="bank_transfer">ব্যাংক ট্রান্সফার (Bank Transfer)</option>
-                    <option value="cash">নগদ ক্যাশ (Cash)</option>
-                    <option value="mobile_money">মোবাইল ব্যাংকিং (bKash/Nagad/Rocket)</option>
-                    <option value="cheque">ব্যাংক চেক (Cheque)</option>
+                    <option value="bank_transfer">Bank Transfer / EFT</option>
+                    <option value="cash">Cash in Hand</option>
+                    <option value="mobile_money">Digital / Mobile Money</option>
+                    <option value="cheque">Cheque</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    সংক্ষিপ্ত বিবরণ / নোট
+                    {t('descriptionLabel')}
                   </label>
                   <input
                     type="text"
                     value={txDescription}
                     onChange={(e) => setTxDescription(e.target.value)}
-                    placeholder="যেমন: ২০০ পিস পোলো ডেলিভারি"
+                    placeholder="e.g. 500 pcs fabric procurement"
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -323,7 +331,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                   className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" />
-                  {txLoading ? 'এক্সেলে সেভ হচ্ছে...' : 'এক্সেলে ডাটা এন্ট্রি নিশ্চিত করুন (Save to Excel)'}
+                  {txLoading ? t('syncing') : t('saveToExcelBtn')}
                 </button>
               </div>
             </form>
@@ -338,10 +346,10 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">
-                  ব্যবসার মূলধন ও স্থায়ী খরচ (Master Profile)
+                  {t('profileSubTab')}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  এখানে দেওয়া তথ্যগুলো ব্যাকএন্ডের `Business_Profile` এক্সেল শিটে জমা থাকে।
+                  Master business profile synchronized with `Business_Profile` Excel database sheet.
                 </p>
               </div>
             </div>
@@ -349,7 +357,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
             {profSuccess && (
               <div className="mb-4 p-3 bg-emerald-50 border border-emerald-300 text-emerald-800 text-sm rounded-xl flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-emerald-600" />
-                মাস্টার প্রোফাইল ও এক্সেল শিট আপডেট সম্পন্ন হয়েছে!
+                {t('saveProfileSuccessMsg')}
               </div>
             )}
 
@@ -357,7 +365,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    কারখানা / ব্যবসার নাম
+                    {t('factoryNameLabel')}
                   </label>
                   <input
                     type="text"
@@ -368,7 +376,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    শুরুর তারিখ
+                    {t('startDateLabel')}
                   </label>
                   <input
                     type="date"
@@ -379,7 +387,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    প্রারম্ভিক বিনিয়োগ ({profile.currency})
+                    {t('initialInvestmentLabel')} ({profile.currency})
                   </label>
                   <input
                     type="number"
@@ -396,12 +404,12 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                 <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-indigo-600" />
-                  স্থায়ী ব্যয় (Monthly Fixed Costs)
+                  {t('monthlyFixedCostsGroup')}
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      মোট কর্মী সংখ্যা
+                      {t('workerCountLabel')}
                     </label>
                     <input
                       type="number"
@@ -414,7 +422,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      মাসিক মোট বেতন ({profile.currency})
+                      {t('salariesLabel')} ({profile.currency})
                     </label>
                     <input
                       type="number"
@@ -427,7 +435,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      বিদ্যুৎ বিল ({profile.currency})
+                      {t('electricityLabel')} ({profile.currency})
                     </label>
                     <input
                       type="number"
@@ -440,7 +448,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      কারখানা ভাড়া ({profile.currency})
+                      {t('rentLabel')} ({profile.currency})
                     </label>
                     <input
                       type="number"
@@ -458,12 +466,12 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
               <div className="p-4 bg-indigo-50/60 rounded-xl border border-indigo-200 space-y-3">
                 <h4 className="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
                   <Lightbulb className="w-4 h-4 text-indigo-600" />
-                  টার্গেট প্রফিট ও ফেব্রিক সমীকরণ প্যারামিটার
+                  {t('unitEconomicsGroup')}
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
                     <label className="block text-[11px] font-semibold text-indigo-800 mb-1">
-                      মূল পণ্য
+                      {t('primaryProduct')}
                     </label>
                     <input
                       type="text"
@@ -476,7 +484,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-indigo-800 mb-1">
-                      প্রতি পিসের বিক্রয়মূল্য
+                      {t('unitSellingPriceLabel')}
                     </label>
                     <input
                       type="number"
@@ -489,7 +497,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-indigo-800 mb-1">
-                      প্রতি পিসে ফেব্রিক (মিটার)
+                      {t('fabricPerUnitLabel')}
                     </label>
                     <input
                       type="number"
@@ -503,7 +511,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-indigo-800 mb-1">
-                      ফেব্রিকের মিটার প্রতি দর
+                      {t('fabricCostPerMeterLabel')}
                     </label>
                     <input
                       type="number"
@@ -524,7 +532,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                   className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow transition flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
-                  {profLoading ? 'সংরক্ষণ হচ্ছে...' : 'মাস্টার প্রোফাইল হালনাগাদ করুন'}
+                  {profLoading ? t('syncing') : t('updateProfileBtn')}
                 </button>
               </div>
             </form>
@@ -539,10 +547,10 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
             <div>
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
-                এক্সেল শিট: Daily_Transactions ({transactions.length} rows)
+                Excel: Daily_Transactions ({transactions.length} rows)
               </h3>
               <p className="text-xs text-slate-500">
-                এই টেবিলটি সরাসরি `ledgerloom_database.xlsx` ফাইল থেকে রিয়েল-টাইমে রেন্ডার হচ্ছে।
+                {t('bannerSync')} • LedgerLoom_Database.xlsx
               </p>
             </div>
             <button
@@ -550,7 +558,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
               className="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center gap-1.5 transition text-slate-700"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              রিফ্রেশ শিট
+              Refresh
             </button>
           </div>
 
@@ -564,9 +572,9 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                   <th className="px-3 py-2.5">Category</th>
                   <th className="px-3 py-2.5">Cost Type</th>
                   <th className="px-3 py-2.5">Party / Client</th>
-                  <th className="px-3 py-2.5 text-right">Amount ({profile.currency})</th>
-                  <th className="px-3 py-2.5">Method</th>
-                  <th className="px-3 py-2.5">Status</th>
+                  <th className="px-3 py-2.5 text-right">{t('amountLabel')} ({profile.currency})</th>
+                  <th className="px-3 py-2.5">{t('paymentMethodLabel')}</th>
+                  <th className="px-3 py-2.5">{t('statusTh')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

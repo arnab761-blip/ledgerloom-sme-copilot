@@ -153,7 +153,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div className="text-xs font-bold">{anom.title}</div>
                 <div className="text-[11px] leading-snug opacity-90">{anom.description}</div>
                 <div className="text-[10px] font-semibold opacity-75 pt-1">
-                  💡 প্রস্তাব: {anom.recommendedAction}
+                  {t('anomProposalPrefix')} {anom.recommendedAction}
                 </div>
               </div>
             </div>
@@ -283,12 +283,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   }`}
                 >
                   {isSurplus
-                    ? `উদ্বৃত্ত প্রক্ষেপণ: +${finalProjectedBalance.toLocaleString()} ${currency}`
-                    : `ঘাটতি ঝুঁকি: ${finalProjectedBalance.toLocaleString()} ${currency}`}
+                    ? t('surplusBadge', {
+                        amount: finalProjectedBalance.toLocaleString(),
+                        currency,
+                      })
+                    : t('shortfallBadge', {
+                        amount: finalProjectedBalance.toLocaleString(),
+                        currency,
+                      })}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                বিগত ৩–৬ মাসের প্যাটার্ন অনুযায়ী আগামী {forecastDays} দিনের সম্ভাব্য ক্যাশ-ফ্লো পূর্বাভাস
+                {t('forecastDescPattern', { days: forecastDays })}
               </p>
             </div>
 
@@ -303,7 +309,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                ৩০ দিনের পূর্বাভাস
+                {t('forecast30Btn')}
               </button>
               <button
                 type="button"
@@ -314,7 +320,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                ৬০ দিনের পূর্বাভাস
+                {t('forecast60Btn')}
               </button>
             </div>
           </div>

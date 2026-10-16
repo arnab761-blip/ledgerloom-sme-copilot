@@ -2,8 +2,13 @@ import { NextResponse } from 'next/server';
 import { ExcelDatabase } from '@/lib/excel-database';
 import { AccountingEngine } from '@/lib/accounting-engine';
 
-export async function GET() {
+import { SupportedLanguage } from '@/lib/i18n';
+
+export async function GET(req: Request) {
   try {
+    const url = new URL(req.url);
+    const lang = (url.searchParams.get('lang') || 'en') as SupportedLanguage;
+
     const profile = ExcelDatabase.getProfile();
     const transactions = ExcelDatabase.getTransactions();
     const debtors = ExcelDatabase.getDebtors();
@@ -20,13 +25,15 @@ export async function GET() {
     const financingOptions = AccountingEngine.matchFinancingOptions(
       profile,
       healthMetrics,
-      debtors
+      debtors,
+      lang
     );
     const anomalies = AccountingEngine.detectAnomalies(
       profile,
       healthMetrics,
       transactions,
-      debtors
+      debtors,
+      lang
     );
 
     return NextResponse.json({

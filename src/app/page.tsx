@@ -21,7 +21,7 @@ import {
   FinancingOption,
   AnomalyAlert,
 } from '@/lib/types';
-import { SupportedLanguage } from '@/lib/i18n';
+import { SupportedLanguage, getTranslation } from '@/lib/i18n';
 
 export default function HomePage() {
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -31,17 +31,8 @@ export default function HomePage() {
   // Multi-language state (Default: English for international track, easily switchable to Chinese, Bengali, Hindi)
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>('en');
 
-  useEffect(() => {
-    const saved = localStorage.getItem('ledgerloom_lang') as SupportedLanguage | null;
-    if (saved && (saved === 'en' || saved === 'zh' || saved === 'bn' || saved === 'hi')) {
-      setCurrentLanguage(saved);
-    }
-  }, []);
-
-  const handleChangeLanguage = (lang: SupportedLanguage) => {
-    setCurrentLanguage(lang);
-    localStorage.setItem('ledgerloom_lang', lang);
-  };
+  const t = (key: string, params?: Record<string, string | number>) =>
+    getTranslation(currentLanguage, key, params);
 
   // Security Session State (30-Minute Sliding Lock)
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -59,10 +50,11 @@ export default function HomePage() {
   const [anomalies, setAnomalies] = useState<AnomalyAlert[]>([]);
   const [currentPreset, setCurrentPreset] = useState<'garments' | 'cafe'>('garments');
 
-  // Load Financial Data
-  const loadFinancialData = useCallback(async () => {
+  // Load Financial Data (passes lang query param to retrieve localized anomalies & options)
+  const loadFinancialData = useCallback(async (lang?: SupportedLanguage) => {
     try {
-      const res = await fetch('/api/data');
+      const activeLang = lang || currentLanguage;
+      const res = await fetch(`/api/data?lang=${activeLang}`);
       const json = await res.json();
       if (json.success) {
         setProfile(json.profile);
@@ -73,7 +65,10 @@ export default function HomePage() {
         setMetrics(json.healthMetrics);
         if (json.financingOptions) setFinancingOptions(json.financingOptions);
         if (json.anomalies) setAnomalies(json.anomalies);
-        if (json.profile?.industry?.toLowerCase().includes('coffee') || json.profile?.industry?.toLowerCase().includes('café')) {
+        if (
+          json.profile?.industry?.toLowerCase().includes('coffee') ||
+          json.profile?.industry?.toLowerCase().includes('café')
+        ) {
           setCurrentPreset('cafe');
         } else {
           setCurrentPreset('garments');
@@ -83,7 +78,23 @@ export default function HomePage() {
     } catch (err) {
       console.error('Failed to load data', err);
     }
+  }, [currentLanguage]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('ledgerloom_lang') as SupportedLanguage | null;
+    if (saved && (saved === 'en' || saved === 'zh' || saved === 'bn' || saved === 'hi')) {
+      setCurrentLanguage(saved);
+      loadFinancialData(saved);
+    } else {
+      loadFinancialData('en');
+    }
   }, []);
+
+  const handleChangeLanguage = (lang: SupportedLanguage) => {
+    setCurrentLanguage(lang);
+    localStorage.setItem('ledgerloom_lang', lang);
+    loadFinancialData(lang);
+  };
 
   const handleSwitchPreset = async (preset: 'garments' | 'cafe') => {
     try {
@@ -95,16 +106,12 @@ export default function HomePage() {
       const data = await res.json();
       if (data.success) {
         setCurrentPreset(preset);
-        await loadFinancialData();
+        await loadFinancialData(currentLanguage);
       }
     } catch (err) {
       console.error('Failed to switch preset', err);
     }
   };
-
-  useEffect(() => {
-    loadFinancialData();
-  }, [loadFinancialData]);
 
   // Session Expiration Countdown (Sliding window check)
   useEffect(() => {
@@ -141,7 +148,7 @@ export default function HomePage() {
       }
       return { success: false, error: data.error };
     } catch {
-      return { success: false, error: 'সার্ভার এরর' };
+      return { success: false, error: 'Server error' };
     }
   };
 
@@ -175,7 +182,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (data.success) {
-        await loadFinancialData();
+        await loadFinancialData(currentLanguage);
         return true;
       }
       return false;
@@ -193,7 +200,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (data.success) {
-        await loadFinancialData();
+        await loadFinancialData(currentLanguage);
         return true;
       }
       return false;
@@ -211,7 +218,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (data.success) {
-        await loadFinancialData();
+        await loadFinancialData(currentLanguage);
         return true;
       }
       return false;
@@ -229,7 +236,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (data.success) {
-        await loadFinancialData();
+        await loadFinancialData(currentLanguage);
         return true;
       }
       return false;
@@ -247,7 +254,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (data.success) {
-        await loadFinancialData();
+        await loadFinancialData(currentLanguage);
         return true;
       }
       return false;
@@ -256,7 +263,10 @@ export default function HomePage() {
     }
   };
 
-  const handleUpdateDebtorStatus = async (id: string, status: 'pending' | 'overdue' | 'settled') => {
+  const handleUpdateDebtorStatus = async (
+    id: string,
+    status: 'pending' | 'overdue' | 'settled'
+  ) => {
     try {
       const res = await fetch('/api/data', {
         method: 'POST',
@@ -265,7 +275,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (data.success) {
-        await loadFinancialData();
+        await loadFinancialData(currentLanguage);
         return true;
       }
       return false;
@@ -283,7 +293,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (data.success) {
-        await loadFinancialData();
+        await loadFinancialData(currentLanguage);
         return true;
       }
       return false;
@@ -300,13 +310,21 @@ export default function HomePage() {
         </div>
         <h2 className="text-xl font-bold tracking-tight">LedgerLoom SME Copilot</h2>
         <p className="text-xs text-slate-400 mt-1">
-          এক্সেলে ডেটাবেস এবং অ্যাকাউন্টিং ইঞ্জিন লোড হচ্ছে...
+          {currentLanguage === 'zh'
+            ? '正在同步 Excel 数据库与财务算力引擎...'
+            : currentLanguage === 'hi'
+            ? 'एक्सेल डेटाबेस और अकाउंटिंग इंजन लोड हो रहा है...'
+            : currentLanguage === 'bn'
+            ? 'এক্সেলে ডেটাবেস এবং অ্যাকাউন্টিং ইঞ্জিন লোড হচ্ছে...'
+            : 'Loading LedgerLoom database & accounting engine...'}
         </p>
       </div>
     );
   }
 
-  const pendingApprovalsCount = transactions.filter((t) => t.status === 'pending_approval').length;
+  const pendingApprovalsCount = transactions.filter(
+    (t) => t.status === 'pending_approval'
+  ).length;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -317,7 +335,7 @@ export default function HomePage() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         pendingApprovalsCount={pendingApprovalsCount}
-        onRefreshData={loadFinancialData}
+        onRefreshData={() => loadFinancialData(currentLanguage)}
         currentLanguage={currentLanguage}
         onChangeLanguage={handleChangeLanguage}
         currentPreset={currentPreset}
@@ -341,11 +359,12 @@ export default function HomePage() {
           <DataEntryAndExcelSync
             profile={profile}
             transactions={transactions}
-            onRefreshData={loadFinancialData}
+            onRefreshData={() => loadFinancialData(currentLanguage)}
             onUpdateProfile={handleUpdateProfile}
             onAddTransaction={handleAddTransaction}
             isUnlocked={isUnlocked}
             onRequireUnlock={() => setIsSecurityModalOpen(true)}
+            currentLanguage={currentLanguage}
           />
         )}
 
@@ -358,6 +377,7 @@ export default function HomePage() {
             onAddTransaction={handleAddTransaction}
             isUnlocked={isUnlocked}
             onRequireUnlock={() => setIsSecurityModalOpen(true)}
+            currentLanguage={currentLanguage}
           />
         )}
 
@@ -369,6 +389,7 @@ export default function HomePage() {
             onAddDebtor={handleAddDebtor}
             isUnlocked={isUnlocked}
             onRequireUnlock={() => setIsSecurityModalOpen(true)}
+            currentLanguage={currentLanguage}
           />
         )}
 
@@ -379,6 +400,7 @@ export default function HomePage() {
             onRecordPayment={handleRecordPayment}
             isUnlocked={isUnlocked}
             onRequireUnlock={() => setIsSecurityModalOpen(true)}
+            currentLanguage={currentLanguage}
           />
         )}
 
@@ -394,7 +416,12 @@ export default function HomePage() {
           />
         )}
 
-        {activeTab === 'goal_planner' && <TargetProfitPlanner profile={profile} />}
+        {activeTab === 'goal_planner' && (
+          <TargetProfitPlanner
+            profile={profile}
+            currentLanguage={currentLanguage}
+          />
+        )}
 
         {activeTab === 'copilot' && (
           <CopilotChat
@@ -406,29 +433,37 @@ export default function HomePage() {
         {activeTab === 'audit' && (
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
             <h3 className="text-base font-bold text-slate-900">
-              সিকিউরিটি ও কমপ্লায়েন্স অডিট ট্রেইল (Deliverables 05 & 06)
+              {t('auditTabHeading')}
             </h3>
             <p className="text-xs text-slate-500">
-              কারখানার প্রতিটি হিসাব পরিবর্তন, এপ্রুভাল এবং এআই টাস্কের অপরিবর্তনীয় অডিট লগ
+              {t('auditTabDesc')}
             </p>
             <div className="max-h-96 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs">
               {auditLogs.map((log) => (
-                <div key={log.id} className="p-3 hover:bg-slate-50 transition flex items-start justify-between gap-3">
+                <div
+                  key={log.id}
+                  className="p-3 hover:bg-slate-50 transition flex items-start justify-between gap-3"
+                >
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] text-slate-400">{log.id}</span>
-                      <span className="font-bold text-slate-900">{log.action}</span>
+                      <span className="font-mono text-[10px] text-slate-400">
+                        {log.id}
+                      </span>
+                      <span className="font-bold text-slate-900">
+                        {log.action}
+                      </span>
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-indigo-100 text-indigo-700">
                         {log.permissionTier}
                       </span>
                     </div>
                     <p className="text-slate-600 text-[11px]">{log.details}</p>
                     <div className="text-[10px] text-slate-400">
-                      Actor: {log.actor} • Time: {new Date(log.timestamp).toLocaleString()}
+                      {t('auditActorLabel')}: {log.actor} • {t('auditTimeLabel')}:{' '}
+                      {new Date(log.timestamp).toLocaleString()}
                     </div>
                   </div>
                   <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[9px]">
-                    {log.status.toUpperCase()}
+                    {t('auditStatusSuccess')}
                   </span>
                 </div>
               ))}
@@ -445,6 +480,7 @@ export default function HomePage() {
         onUnlockSession={handleUnlockSession}
         onRefreshSession={handleRefreshSession}
         auditLogs={auditLogs}
+        currentLanguage={currentLanguage}
       />
     </div>
   );
