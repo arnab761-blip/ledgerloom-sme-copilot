@@ -10,6 +10,7 @@ interface HeaderProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   pendingApprovalsCount: number;
+  onRefreshData?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -19,7 +20,38 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   pendingApprovalsCount,
+  onRefreshData,
 }) => {
+  const [uploading, setUploading] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    setUploading(true);
+    try {
+      const res = await fetch('/api/upload-excel', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('✅ এক্সেল ফাইল সফলভাবে সিঙ্ক হয়েছে!');
+        if (onRefreshData) onRefreshData();
+      } else {
+        alert('❌ এরর: ' + data.error);
+      }
+    } catch {
+      alert('❌ আপলোড করতে সমস্যা হয়েছে!');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
   const tabs = [
     { id: 'dashboard', label: '📊 Dashboard' },
     { id: 'data_entry', label: '📝 Data Entry & Excel Sync' },
@@ -61,6 +93,26 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Quick Actions & Security Status */}
           <div className="flex items-center gap-3">
+            {/* Hidden File Input for Excel Upload */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept=".xlsx,.xls"
+              className="hidden"
+            />
+
+            {/* Upload Excel Button */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm disabled:opacity-50"
+              title="Upload modified Excel file directly"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              {uploading ? 'সিঙ্ক হচ্ছে...' : 'Upload .XLSX'}
+            </button>
+
             {/* Download Excel */}
             <a
               href="/api/export-excel"
