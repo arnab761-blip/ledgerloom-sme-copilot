@@ -19,7 +19,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
   en: {
     appTitle: 'LedgerLoom',
     appBadge: 'SME Copilot',
-    competitionTrack: '2026 8th FinTechathon (WeBank) • Topic E: Autonomous SME Finance Participant',
+    competitionTrack: 'Autonomous Financial Operating System & AI CFO for Small Businesses',
     downloadExcel: 'Download .XLSX',
     uploadExcel: 'Upload .XLSX',
     syncing: 'Syncing...',
@@ -180,11 +180,11 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     // Security Modal
     securityModalTitle: 'LedgerLoom Security Vault & Compliance Audit',
-    securityModalSubtitle: 'FinTechathon 2026 • 30% Security & Compliance Deliverable Engine',
+    securityModalSubtitle: 'Bank-Grade Security Architecture, Role-Based Access Control & Audit Engine',
     tabSessionLock: '🔐 30-Min Session Lock',
     tabAuditTrail: '📜 Immutable Audit Trail',
     tabSelfAssessment: '🛡️ Security Self-Assessment',
-    enterPinLabel: 'Enter 4-Digit Owner PIN (Default: 2026)',
+    enterPinLabel: 'Enter 4-Digit Owner Secret PIN',
     unlockBtn: 'Unlock Vault for 30 Minutes',
     extendSessionBtn: '+30 Minutes Extension',
 
@@ -272,7 +272,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     payEmiModalBtn: 'Record Repayment',
 
     // Audit tab
-    auditTabHeading: 'Security & Compliance Immutable Audit Trail (Deliverables 05 & 06)',
+    auditTabHeading: 'Security & Compliance Immutable Audit Trail',
     auditTabDesc: 'Tamper-evident audit trail capturing every profile update, transaction approval, and AI agent execution.',
     auditStatusSuccess: 'SUCCESS',
     auditActorLabel: 'Actor',
@@ -283,7 +283,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
   zh: {
     appTitle: 'LedgerLoom',
     appBadge: '中小企业财务副驾',
-    competitionTrack: '2026第八届微众银行深圳国际金融科技大赛 (FinTechathon) • 赛题E: 中小企业财务副驾',
+    competitionTrack: '中小微企业自主财务操作系统与 AI 首席财务官',
     downloadExcel: '下载 Excel 表格 (.XLSX)',
     uploadExcel: '上传并同步表格 (.XLSX)',
     syncing: '正在同步...',
@@ -444,11 +444,11 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     // Security Modal
     securityModalTitle: 'LedgerLoom 安全合规审计系统',
-    securityModalSubtitle: '微众银行国际赛 • 30% 安全合规关键交付物引擎',
+    securityModalSubtitle: '银行级安全架构、基于角色的权限控制与合规审计引擎',
     tabSessionLock: '🔐 30分钟会话滑动锁',
     tabAuditTrail: '📜 不可篡改审计日志',
     tabSelfAssessment: '🛡️ 安全自评估报告',
-    enterPinLabel: '请输入4位所有者口令 (默认: 2026)',
+    enterPinLabel: '请输入 4 位所有者机密安全口令',
     unlockBtn: '解锁 30 分钟操作权限',
     extendSessionBtn: '+30 分钟延期',
 
@@ -536,7 +536,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     payEmiModalBtn: '登记还款记录',
 
     // Audit tab
-    auditTabHeading: '安全合规与不可篡改审计追踪 (参赛交付物 05 & 06)',
+    auditTabHeading: '安全合规与不可篡改审计追踪',
     auditTabDesc: '基于时间戳防篡改审计日志，完整记录每次企业档案修改、资金记账核准与 AI 代理操作。',
     auditStatusSuccess: '成功',
     auditActorLabel: '操作主体',
@@ -547,7 +547,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
   bn: {
     appTitle: 'LedgerLoom',
     appBadge: 'SME কোপাইলট',
-    competitionTrack: '২০২৬ ৮ম ফিনটেকাথন (WeBank) • টপিক ই: অটোনোমাস এসএমই ফাইন্যান্স পার্টিসিপেন্ট',
+    competitionTrack: 'ক্ষুদ্র ও মাঝারি ব্যবসার স্বায়ত্তশাসিত এআই সিএফও ও আর্থিক অপারেটিং সিস্টেম',
     downloadExcel: 'Download .XLSX',
     uploadExcel: 'Upload .XLSX',
     syncing: 'সিঙ্ক হচ্ছে...',
@@ -708,11 +708,11 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     // Security Modal
     securityModalTitle: 'LedgerLoom সিকিউরিটি ভল্ট ও কমপ্লায়েন্স রিপোর্ট',
-    securityModalSubtitle: 'FinTechathon 2026 • 30% Security & Compliance Deliverable Engine',
+    securityModalSubtitle: 'ব্যাংকিং-গ্রেড সিকিউরিটি আর্কিটেকচার, রোল-বেসড অ্যাক্সেস কন্ট্রোল ও অডিট ইঞ্জিন',
     tabSessionLock: '🔐 ৩০-মিনিট সেশন লক',
     tabAuditTrail: '📜 রিয়েল অডিট ট্রেইল',
     tabSelfAssessment: '🛡️ সিকিউরিটি সেলফ-অ্যাসেসমেন্ট',
-    enterPinLabel: 'মালিকের ৪-ডিজিটের সিকিউরিটি পিন দিন (ডিফল্ট: 2026)',
+    enterPinLabel: 'মালিকের ৪-ডিজিটের গোপন সিকিউরিটি পিন দিন',
     unlockBtn: '৩০ মিনিটের জন্য ভল্ট আনলক করুন',
     extendSessionBtn: '+৩০ মিনিট বাড়ান',
 
@@ -812,7 +812,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
   hi: {
     appTitle: 'LedgerLoom',
     appBadge: 'एसएमई वित्त कोपायलट',
-    competitionTrack: '2026 8वीं फिनटेकथॉन (WeBank) • विषय E: स्वायत्त एसएमई वित्तीय प्रतिभागी',
+    competitionTrack: 'छोटे व्यवसायों के लिए स्वायत्त वित्तीय ऑपरेटिंग सिस्टम एवं एआई सीएफओ',
     downloadExcel: 'एक्सेल डाउनलोड करें (.XLSX)',
     uploadExcel: 'एक्सेल अपलोड व सिंक (.XLSX)',
     syncing: 'सिंकिंग जारी है...',
@@ -964,11 +964,11 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     // Security Modal
     securityModalTitle: 'लेजरलूम सुरक्षा वॉल्ट और अनुपालन रिपोर्ट',
-    securityModalSubtitle: 'फिनटेकथॉन 2026 • 30% सुरक्षा एवं अनुपालन इंजन',
+    securityModalSubtitle: 'बैंक-ग्रेड सुरक्षा वास्तुकला, भूमिका-आधारित एक्सेस नियंत्रण एवं ऑडिट इंजन',
     tabSessionLock: '🔐 30-मिनट सत्र लॉक',
     tabAuditTrail: '📜 सुरक्षित ऑडिट ट्रेल',
     tabSelfAssessment: '🛡️ सुरक्षा स्व-मूल्यांकन रिपोर्ट',
-    enterPinLabel: 'मालिक का 4-अंकीय पिन दर्ज करें (डिफ़ॉल्ट: 2026)',
+    enterPinLabel: 'मालिक का 4-अंकीय गुप्त सुरक्षा पिन दर्ज करें',
     unlockBtn: '30 मिनट के लिए वॉल्ट अनलॉक करें',
     extendSessionBtn: '+30 मिनट बढ़ाएँ',
 

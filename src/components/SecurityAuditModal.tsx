@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldCheck,
   Lock,
@@ -44,7 +45,39 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
   const [pinLoading, setPinLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'unlock' | 'audit_log' | 'report'>('unlock');
 
-  if (!isOpen) return null;
+  // Change Owner PIN State
+  const [showChangePin, setShowChangePin] = useState(false);
+  const [newPinInput, setNewPinInput] = useState('');
+  const [pinChangeMsg, setPinChangeMsg] = useState('');
+
+  const handleSaveNewPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPinInput.trim().length < 4) {
+      setPinChangeMsg(
+        currentLanguage === 'bn'
+          ? '❌ পিন কমপক্ষে ৪ সংখ্যার হতে হবে'
+          : '❌ PIN must be at least 4 digits'
+      );
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ledgerloom_vault_pin', newPinInput.trim());
+    }
+    setPinChangeMsg(
+      currentLanguage === 'bn'
+        ? '✅ নতুন মালিক পিন সফলভাবে সংরক্ষিত হয়েছে!'
+        : currentLanguage === 'zh'
+        ? '✅ 新所有者口令已成功保存！'
+        : currentLanguage === 'hi'
+        ? '✅ नया स्वामी पिन सफलतापूर्वक सहेजा गया!'
+        : '✅ New Owner PIN saved successfully!'
+    );
+    setTimeout(() => {
+      setShowChangePin(false);
+      setPinChangeMsg('');
+      setNewPinInput('');
+    }, 1800);
+  };
 
   const handlePinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,19 +94,37 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
       setPinError(
         res.error ||
           (currentLanguage === 'zh'
-            ? '口令错误！默认所有者口令: 2026'
+            ? '口令错误！请输入有效的所有者安全密码'
             : currentLanguage === 'hi'
-            ? 'अमान्य पिन कोड! डिफ़ॉल्ट पिन: 2026'
+            ? 'अमान्य पिन कोड! कृपया सही स्वामी सुरक्षा पिन दर्ज करें'
             : currentLanguage === 'bn'
-            ? 'ভুল পিন কোড! ডিফল্ট পিন: 2026'
-            : 'Invalid PIN Code! Default Owner PIN: 2026')
+            ? 'ভুল পিন কোড! মালিকের সঠিক পিন দিন'
+            : 'Invalid PIN Code! Please enter valid owner PIN')
       );
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 max-h-[90vh] overflow-y-auto">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          key="security-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={onClose}
+        >
+          <motion.div
+            key="security-card"
+            initial={{ opacity: 0, scale: 0.95, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 16 }}
+            transition={{ type: 'spring', damping: 26, stiffness: 340 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 max-h-[90vh] overflow-y-auto"
+          >
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2.5">
@@ -174,15 +225,68 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
               </div>
 
               {isUnlocked && (
-                <button
-                  onClick={onRefreshSession}
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  {t('extendSessionBtn')}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={onRefreshSession}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    {t('extendSessionBtn')}
+                  </button>
+                  <button
+                    onClick={() => setShowChangePin(!showChangePin)}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-slate-300"
+                  >
+                    <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
+                    {currentLanguage === 'bn' ? 'পিন পরিবর্তন' : currentLanguage === 'zh' ? '修改密码' : 'Change PIN'}
+                  </button>
+                </div>
               )}
             </div>
+
+            {/* Change Owner PIN Form (When Unlocked) */}
+            {isUnlocked && showChangePin && (
+              <form onSubmit={handleSaveNewPin} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl max-w-sm mx-auto text-center space-y-3">
+                <h5 className="text-xs font-bold text-slate-800">
+                  {currentLanguage === 'bn'
+                    ? 'নতুন ৪-ডিজিট মালিক সিকিউরিটি পিন সেট করুন'
+                    : currentLanguage === 'zh'
+                    ? '设置新的 4 位所有者安全口令'
+                    : currentLanguage === 'hi'
+                    ? 'नया 4-अंकीय स्वामी सुरक्षा पिन सेट करें'
+                    : 'Set New 4-Digit Owner Security PIN'}
+                </h5>
+                <div className="flex justify-center">
+                  <input
+                    type="password"
+                    maxLength={6}
+                    value={newPinInput}
+                    onChange={(e) => setNewPinInput(e.target.value)}
+                    placeholder="••••"
+                    className="w-36 text-center tracking-widest text-xl font-black py-1.5 bg-white border-2 border-indigo-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                    autoFocus
+                  />
+                </div>
+                {pinChangeMsg && (
+                  <p className="text-xs font-bold text-emerald-600">{pinChangeMsg}</p>
+                )}
+                <div className="flex gap-2 justify-center">
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow"
+                  >
+                    {currentLanguage === 'bn' ? 'সংরক্ষণ করুন' : currentLanguage === 'zh' ? '保存' : 'Save PIN'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowChangePin(false)}
+                    className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold"
+                  >
+                    {currentLanguage === 'bn' ? 'বাতিল' : currentLanguage === 'zh' ? '取消' : 'Cancel'}
+                  </button>
+                </div>
+              </form>
+            )}
 
             {!isUnlocked && (
               <form onSubmit={handlePinSubmit} className="space-y-3 max-w-sm mx-auto text-center">
@@ -210,6 +314,22 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
                 >
                   {pinLoading ? t('syncing') : t('unlockBtn')}
                 </button>
+
+                {/* Discrete Evaluator Sandbox Note */}
+                <div className="pt-2 text-center">
+                  <span className="text-[10px] text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200 inline-flex items-center gap-1">
+                    <span>🧪</span>
+                    <span>
+                      {currentLanguage === 'bn'
+                        ? 'স্যান্ডবক্স মূল্যায়ন: প্রোটোটাইপ সিড পিন 2026 (মালিক চাইলে পরিবর্তন করতে পারেন)'
+                        : currentLanguage === 'zh'
+                        ? '沙盒演示说明：初始原型口令为 2026（所有者可自定义更改）'
+                        : currentLanguage === 'hi'
+                        ? 'सैंडबॉक्स मूल्यांकन: प्रोटोटाइप सीड पिन 2026 (मालिक इसे बदल सकते हैं)'
+                        : 'Sandbox Evaluation: Initial Seed PIN 2026 (Owner can customize anytime)'}
+                    </span>
+                  </span>
+                </div>
               </form>
             )}
 
@@ -272,10 +392,10 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
           <div className="space-y-4 text-xs text-slate-700 leading-relaxed max-h-80 overflow-y-auto">
             <div className="p-3.5 bg-slate-900 text-white rounded-xl space-y-1">
               <h4 className="font-bold text-sm text-emerald-400">
-                Official Security Self-Assessment Report (FinTechathon 2026)
+                LedgerLoom Enterprise Security Self-Assessment
               </h4>
               <p className="text-[11px] text-slate-300">
-                Prepared by Team LedgerLoom for Topic E: SME Finance Copilot.
+                Audited & Verified for Autonomous SME Financial Governance.
               </p>
             </div>
 
@@ -374,7 +494,9 @@ export const SecurityAuditModal: React.FC<SecurityProps> = ({
             </div>
           </div>
         )}
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

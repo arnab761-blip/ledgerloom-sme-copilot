@@ -56,80 +56,176 @@ export const ReceiptScannerStaging: React.FC<StagingProps> = ({
     if (currentLanguage === 'zh') {
       return [
         {
+          title: '📱 模拟移动支付入账通知 (达卡服装中心)',
+          amount: 25000,
+          type: 'income',
+          category: 'sales',
+          party: '达卡服装中心 (Dhaka Fashion Hub)',
+          costType: 'variable',
+          desc: '收到达卡服装中心通过 bKash 转账货款 25,000 元',
+          isSuspicious: false,
+        },
+        {
+          title: '🧵 采购 50 码面料草案 (10,000 挂账)',
+          amount: 25000,
+          type: 'expense',
+          category: 'raw_material',
+          party: '纺织面料厂 (Karim Traders)',
+          costType: 'variable',
+          desc: '采购50码棉质面料花费25,000，其中10,000挂账',
+          isSuspicious: true,
+        },
+        {
           title: '五金机电城收据 (缝纫机电机驱动轴)',
           amount: 8500,
+          type: 'expense',
           category: 'maintenance',
           party: '顺达机电配件商行',
           costType: 'fixed',
           desc: '车间缝纫机高转速电机与传动轴承更换维修',
+          isSuspicious: false,
         },
         {
           title: '轻纺辅料城票据 (金属拉链与纽扣)',
           amount: 14200,
+          type: 'expense',
           category: 'raw_material',
           party: '宏发纺织辅料行',
           costType: 'variable',
           desc: 'Polo衫定制铜质纽扣 500 打与领口高密拉链',
+          isSuspicious: false,
         },
       ];
     }
     if (currentLanguage === 'hi') {
       return [
         {
+          title: '📱 सिम्युलेटेड पेमेंट एसएमएस (ढाका फैशन हब)',
+          amount: 25000,
+          type: 'income',
+          category: 'sales',
+          party: 'ढाका फैशन हब',
+          costType: 'variable',
+          desc: 'bKash: 25,000 रु. ढाका फैशन हब से प्राप्त हुए',
+          isSuspicious: false,
+        },
+        {
+          title: '🧵 50 गज कपड़ा खरीद मेमो (10,000 उधार)',
+          amount: 25000,
+          type: 'expense',
+          category: 'raw_material',
+          party: 'करीम ट्रेडर्स',
+          costType: 'variable',
+          desc: '50 गज कपड़ा खरीद 25,000 रु., 10,000 रु. बकाया',
+          isSuspicious: true,
+        },
+        {
           title: 'हार्डवेयर कैश मेमो (सिलाई मशीन मोटर पार्ट्स)',
           amount: 8500,
+          type: 'expense',
           category: 'maintenance',
           party: 'नवाबपुर मेटल स्टोर',
           costType: 'fixed',
           desc: 'सिलाई मशीन मोटर ड्राइव बेल्ट व बेयरिंग मरम्मत',
+          isSuspicious: false,
         },
         {
           title: 'सदरघाट एक्सेसरीज मेमो (ज़िप व बटन)',
           amount: 14200,
+          type: 'expense',
           category: 'raw_material',
           party: 'सदरघाट ट्रिम्स एंड एक्सेसरीज',
           costType: 'variable',
           desc: 'पोलो शर्ट मेटल बटन 500 दर्जन व स्पेशल कॉलर ज़िप',
+          isSuspicious: false,
         },
       ];
     }
     if (currentLanguage === 'bn') {
       return [
         {
+          title: '📱 সিমুলেটেড bKash নোটিফিকেশন (ঢাকা ফ্যাশন হাব)',
+          amount: 25000,
+          type: 'income',
+          category: 'sales',
+          party: 'Dhaka Fashion Hub',
+          costType: 'variable',
+          desc: 'bKash: TrxID 9H7X2B1 received Tk 25,000 from Dhaka Fashion Hub.',
+          isSuspicious: false,
+        },
+        {
+          title: '🧵 ৫০ গজ কাপড় ক্রয় মেমো (১০,০০০ বাকি)',
+          amount: 25000,
+          type: 'expense',
+          category: 'raw_material',
+          party: 'করিম ট্রেডার্স / Narayanganj Spinning',
+          costType: 'variable',
+          desc: '৫০ গজ সুতি কাপড় ক্রয় ২৫,০০০ টাকায়, ১০,০০০ টাকা বাকি।',
+          isSuspicious: true,
+        },
+        {
           title: 'নবাবপুর হার্ডওয়্যার ক্যাশ মেমো (মেশিন মোটর পার্টস)',
           amount: 8500,
+          type: 'expense',
           category: 'maintenance',
           party: 'নবাবপুর মেটাল স্টোর',
           costType: 'fixed',
           desc: 'সুইং মেশিন মোটর ড্রাইভ বেল্ট ও বিয়ারিং মেরামত',
+          isSuspicious: false,
         },
         {
           title: 'সদরঘাট এক্সেসরিজ মেমো (জিপার ও বোতাম)',
           amount: 14200,
+          type: 'expense',
           category: 'raw_material',
           party: 'সদরঘাট ট্রিমস অ্যান্ড এক্সেসরিজ',
           costType: 'variable',
           desc: 'পোলো শার্টের মেটাল বাটন ৫০০ ডজন ও স্পেসিয়াল কলার জিপার',
+          isSuspicious: false,
         },
       ];
     }
     // Default English
     return [
       {
+        title: '📱 Simulated bKash SMS (Dhaka Fashion Hub)',
+        amount: 25000,
+        type: 'income',
+        category: 'sales',
+        party: 'Dhaka Fashion Hub',
+        costType: 'variable',
+        desc: 'bKash: TrxID 9H7X2B1 received Tk 25,000 from Dhaka Fashion Hub.',
+        isSuspicious: false,
+      },
+      {
+        title: '🧵 50 Yards Fabric Purchase (10k Credit)',
+        amount: 25000,
+        type: 'expense',
+        category: 'raw_material',
+        party: 'Karim Traders / Spinning Mills',
+        costType: 'variable',
+        desc: 'Bought 50 yards fabric for 25,000 Tk; 10,000 Tk credit payable.',
+        isSuspicious: true,
+      },
+      {
         title: 'Industrial Hardware Receipt (Machine Parts)',
         amount: 8500,
+        type: 'expense',
         category: 'maintenance',
         party: 'Metropolis Hardware & Tools',
         costType: 'fixed',
         desc: 'Drive belt replacement and ball bearings for assembly line',
+        isSuspicious: false,
       },
       {
         title: 'Trim & Textile Accessories Invoice (Zippers & Buttons)',
         amount: 14200,
+        type: 'expense',
         category: 'raw_material',
         party: 'Prime Trims & Accessories Ltd',
         costType: 'variable',
         desc: '500 gross brass snaps and custom reinforced collar zippers',
+        isSuspicious: false,
       },
     ];
   };
@@ -141,16 +237,16 @@ export const ReceiptScannerStaging: React.FC<StagingProps> = ({
     setTimeout(async () => {
       await onAddTransaction({
         date: new Date().toISOString().split('T')[0],
-        type: 'expense',
+        type: memo.type || 'expense',
         category: memo.category,
         costType: memo.costType,
         amount: memo.amount,
         description: memo.desc,
         partyName: memo.party,
-        paymentMethod: 'cash',
+        paymentMethod: memo.type === 'income' ? 'mobile_money' : 'cash',
         status: 'pending_approval',
         source: 'receipt_ocr',
-        evidenceNote: `OCR Scanned: ${memo.title}. Owner approval required before committing to Excel.`,
+        evidenceNote: `${memo.title}. Owner approval required before committing to ledger.`,
       });
       setScanning(false);
     }, 1200);
@@ -291,72 +387,106 @@ export const ReceiptScannerStaging: React.FC<StagingProps> = ({
           </div>
         ) : (
           <div className="space-y-3">
-            {pendingTxs.map((tx) => (
-              <div
-                key={tx.id}
-                className="p-4 rounded-xl border border-amber-200 bg-amber-50/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-amber-800">{tx.id}</span>
-                    <span className="text-xs font-bold text-slate-900">{tx.description}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">
-                      Pending Owner Approval
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-600 flex flex-wrap items-center gap-3">
-                    <span>
-                      {t('partyLabel')}: <strong>{tx.partyName || '-'}</strong>
-                    </span>
-                    <span>
-                      {t('categoryLabel')}: <strong>{tx.category}</strong> ({tx.costType})
-                    </span>
-                    <span>{t('paymentMethodLabel')}: {tx.paymentMethod}</span>
-                  </div>
-                  {tx.evidenceNote && (
-                    <p className="text-[11px] text-slate-500 italic">{tx.evidenceNote}</p>
-                  )}
-                </div>
+            {pendingTxs.map((tx) => {
+              const isSuspicious =
+                tx.amount >= 15000 ||
+                tx.evidenceNote?.toLowerCase().includes('বাকি') ||
+                tx.evidenceNote?.toLowerCase().includes('credit') ||
+                tx.evidenceNote?.toLowerCase().includes('suspicious');
 
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="text-right">
-                    <div className="text-base font-black text-rose-600">
-                      -{conv(tx.amount).toLocaleString()} {activeCurrency}
+              return (
+                <div
+                  key={tx.id}
+                  className={`p-4 rounded-2xl border transition-all ${
+                    isSuspicious
+                      ? 'border-rose-400 bg-rose-50/70 shadow-sm ring-1 ring-rose-400'
+                      : 'border-amber-200 bg-amber-50/40'
+                  } flex flex-col md:flex-row items-start md:items-center justify-between gap-4`}
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-slate-800">{tx.id}</span>
+                      <span className="text-xs font-bold text-slate-900">{tx.description}</span>
+                      {isSuspicious ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-600 text-white font-bold flex items-center gap-1 shadow-sm animate-pulse">
+                          <AlertCircle className="w-3 h-3" />
+                          {currentLanguage === 'zh'
+                            ? '⚠️ 大额或挂账审核'
+                            : currentLanguage === 'bn'
+                            ? '⚠️ সন্দেহজনক অঙ্ক / বাকি যাচাই'
+                            : '⚠️ Suspicious / Verification Needed'}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold border border-amber-300">
+                          {currentLanguage === 'bn' ? 'মালিকের খসড়া অনুমোদন প্রয়োজন' : 'Pending Owner Approval'}
+                        </span>
+                      )}
                     </div>
-                    <div className="text-[10px] text-slate-400">{tx.date}</div>
+                    <div className="text-xs text-slate-600 flex flex-wrap items-center gap-3">
+                      <span>
+                        {t('partyLabel')}: <strong>{tx.partyName || '-'}</strong>
+                      </span>
+                      <span>
+                        {t('categoryLabel')}: <strong>{tx.category}</strong> ({tx.costType})
+                      </span>
+                      <span>
+                        {t('paymentMethodLabel')}: <strong>{tx.paymentMethod}</strong>
+                      </span>
+                    </div>
+                    {tx.evidenceNote && (
+                      <p className="text-[11px] text-slate-500 italic flex items-center gap-1">
+                        <FileText className="w-3 h-3 shrink-0 text-slate-400" />
+                        {tx.evidenceNote}
+                      </p>
+                    )}
                   </div>
 
-                  <button
-                    onClick={async () => {
-                      if (!isUnlocked) {
-                        onRequireUnlock();
-                        return;
-                      }
-                      await onApprove(tx.id);
-                    }}
-                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow"
-                    title="Commit to Excel Ledger"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    {t('approveBtn')}
-                  </button>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right">
+                      <div
+                        className={`text-base font-black ${
+                          tx.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+                        }`}
+                      >
+                        {tx.type === 'income' ? '+' : '-'}
+                        {conv(tx.amount).toLocaleString()} {activeCurrency}
+                      </div>
+                      <div className="text-[10px] text-slate-400">{tx.date}</div>
+                    </div>
 
-                  <button
-                    onClick={async () => {
-                      if (!isUnlocked) {
-                        onRequireUnlock();
-                        return;
-                      }
-                      await onReject(tx.id);
-                    }}
-                    className="p-2 bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-600 rounded-xl transition"
-                    title={t('rejectBtn')}
-                  >
-                    <XCircle className="w-4 h-4" />
-                  </button>
+                    <button
+                      onClick={async () => {
+                        if (!isUnlocked) {
+                          onRequireUnlock();
+                          return;
+                        }
+                        await onApprove(tx.id);
+                      }}
+                      className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center gap-1.5 transition shadow-md hover:shadow-lg active:scale-95"
+                      title="Confirm & Commit to Ledger"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      <span>{currentLanguage === 'bn' ? 'Confirm (অনুমোদন)' : 'Confirm'}</span>
+                    </button>
+
+                    <button
+                      onClick={async () => {
+                        if (!isUnlocked) {
+                          onRequireUnlock();
+                          return;
+                        }
+                        await onReject(tx.id);
+                      }}
+                      className="px-3 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-xl text-xs font-bold flex items-center gap-1 transition active:scale-95"
+                      title={t('rejectBtn')}
+                    >
+                      <XCircle className="w-4 h-4" />
+                      <span>{currentLanguage === 'bn' ? 'Reject (বাতিল)' : 'Reject'}</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -10,9 +10,16 @@ import {
   ArrowRight,
   ShieldCheck,
 } from 'lucide-react';
-import { AgentResponse } from '@/lib/agent-orchestrator';
+import { ClientAgent, AgentResponse } from '@/lib/client-agent';
 import { SupportedLanguage, getTranslation } from '@/lib/i18n';
 import { SupportedCurrency, formatCurrencyAmount } from '@/lib/currency';
+import { BusinessProfile, Transaction, DebtorRecord, LoanLiability } from '@/lib/types';
+import {
+  DEFAULT_PROFILE,
+  DEFAULT_TRANSACTIONS,
+  DEFAULT_DEBTORS,
+  DEFAULT_LOANS,
+} from '@/lib/default-datasets';
 
 interface Message {
   id: string;
@@ -28,12 +35,20 @@ interface CopilotChatProps {
   onNavigateTab: (tab: string) => void;
   currentLanguage: SupportedLanguage;
   currentCurrency?: SupportedCurrency;
+  profile?: BusinessProfile;
+  transactions?: Transaction[];
+  debtors?: DebtorRecord[];
+  loans?: LoanLiability[];
 }
 
 export const CopilotChat: React.FC<CopilotChatProps> = ({
   onNavigateTab,
   currentLanguage,
   currentCurrency = 'BDT',
+  profile,
+  transactions,
+  debtors,
+  loans,
 }) => {
   const t = (key: string, params?: Record<string, string | number>) =>
     getTranslation(currentLanguage, key, params);
@@ -140,39 +155,66 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
           currency: currentCurrency,
         }),
       });
-      const data: AgentResponse & { success: boolean } = await res.json();
-
-      if (data.success) {
+      if (res.ok) {
+        const data: AgentResponse & { success: boolean } = await res.json();
+        if (data.success) {
+          const botMsg: Message = {
+            id: `bot-${Date.now()}`,
+            sender: 'assistant',
+            primaryText: data.answerPrimary,
+            englishText: data.answerEnglish,
+            toolUsed: data.executedTool,
+            suggestedAction: data.suggestedAction,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          };
+          setMessages((prev) => [...prev, botMsg]);
+          return;
+        }
+      }
+      throw new Error('API unavailable, switching to edge client agent');
+    } catch {
+      try {
+        const p = profile || DEFAULT_PROFILE;
+        const tx = transactions || DEFAULT_TRANSACTIONS;
+        const d = debtors || DEFAULT_DEBTORS;
+        const l = loans || DEFAULT_LOANS;
+        const clientData = await ClientAgent.processQuery(
+          q,
+          currentLanguage,
+          currentCurrency,
+          p,
+          tx,
+          d,
+          l
+        );
         const botMsg: Message = {
           id: `bot-${Date.now()}`,
           sender: 'assistant',
-          primaryText: data.answerPrimary,
-          englishText: data.answerEnglish,
-          toolUsed: data.executedTool,
-          suggestedAction: data.suggestedAction,
+          primaryText: clientData.answerPrimary,
+          englishText: clientData.answerEnglish,
+          toolUsed: clientData.executedTool,
+          suggestedAction: clientData.suggestedAction,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
         setMessages((prev) => [...prev, botMsg]);
-      } else {
-        throw new Error('API error');
+      } catch (err) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `bot-err-${Date.now()}`,
+            sender: 'assistant',
+            primaryText:
+              currentLanguage === 'zh'
+                ? '抱歉，执行出现异常，请重试或直接查看计算器标签页。'
+                : currentLanguage === 'bn'
+                ? 'দুঃখিত, কোনো একটি ত্রুটি ঘটেছে। দয়া করে পুনরায় প্রশ্নটি করুন।'
+                : currentLanguage === 'hi'
+                ? 'क्षमा करें, एक त्रुटि हुई है। कृपया पुनः प्रयास करें।'
+                : 'Sorry, an error occurred. Please try again.',
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
       }
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `bot-err-${Date.now()}`,
-          sender: 'assistant',
-          primaryText:
-            currentLanguage === 'zh'
-              ? '抱歉，执行出现异常，请重试或直接查看计算器标签页。'
-              : currentLanguage === 'bn'
-              ? 'দুঃখিত, কোনো একটি ত্রুটি ঘটেছে। দয়া করে পুনরায় প্রশ্নটি করুন।'
-              : currentLanguage === 'hi'
-              ? 'क्षमा करें, एक त्रुटि हुई है। कृपया पुनः प्रयास करें।'
-              : 'Sorry, an error occurred. Please try again.',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
     } finally {
       setLoading(false);
     }

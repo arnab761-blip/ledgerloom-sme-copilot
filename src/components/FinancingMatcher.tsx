@@ -121,6 +121,109 @@ export const FinancingMatcher: React.FC<FinancingProps> = ({
         </div>
       )}
 
+      {/* Section 6 Eid Deficit Forecast & 3-Option Loan Pressure Comparison */}
+      <div className="bg-gradient-to-br from-indigo-50 via-white to-slate-50 border-2 border-indigo-200 rounded-3xl p-6 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-slate-900 flex items-center justify-center font-black shrink-0">
+              <AlertCircle className="w-6 h-6 text-slate-950" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-300">
+                  {currentLanguage === 'bn' ? '২৪ তারিখে ৳৩০,০০০ নগদ ঘাটতি পূর্বাভাস' : 'Deficit Alert: 30,000 BDT on the 24th'}
+                </span>
+                <span className="text-[10px] font-bold text-slate-500">
+                  {currentLanguage === 'bn' ? 'রফিক ভাইয়ের কাল্পনিক দৃশ্যপট' : "Rafiq Bhai's Scenario"}
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-slate-900 mt-0.5">
+                {currentLanguage === 'zh'
+                  ? '资金缺口应对方案：3种贷款月供还款压力对比'
+                  : currentLanguage === 'bn'
+                  ? 'ঘাটতি মেটানোর ৩টি ঋণ বিকল্পের মাসিক কিস্তির চাপ তুলনা'
+                  : '3-Option Loan Pressure Comparison (Deficit Mitigation)'}
+              </h3>
+            </div>
+          </div>
+          <span className="text-xs font-semibold px-3 py-1 bg-indigo-100 text-indigo-800 rounded-xl border border-indigo-200 shrink-0">
+            {currentLanguage === 'bn' ? 'সুপারিশ: বিকল্প ১ (সবচেয়ে কম চাপ)' : 'Recommended: Option 1 (Lowest Pressure)'}
+          </span>
+        </div>
+
+        {/* 3 Options Comparison Columns */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+          {/* Option 1 */}
+          <div className="p-4 bg-white border-2 border-emerald-400 rounded-2xl shadow-sm space-y-2 relative">
+            <span className="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-black">
+              ⭐ {currentLanguage === 'bn' ? 'সর্বোত্তম পছন্দ' : 'BEST MATCH'}
+            </span>
+            <div className="text-xs font-bold text-slate-900">
+              {currentLanguage === 'bn' ? '১. ৬ মাসের ক্ষুদ্রঋণ ফ্যাসিলিটি' : '1. 6-Month Micro-Facility'}
+            </div>
+            <div className="text-[11px] text-slate-500">
+              {currentLanguage === 'bn' ? 'সুদের হার: ৮.৫% বার্ষিক' : 'Interest: 8.5% p.a.'}
+            </div>
+            <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200">
+              <div className="text-[10px] text-emerald-800 font-semibold">
+                {currentLanguage === 'bn' ? 'আনুমানিক মাসিক কিস্তি (EMI)' : 'Estimated Monthly EMI'}
+              </div>
+              <div className="text-lg font-black text-emerald-700">
+                ~৳৫,১৭৬ <span className="text-[10px] font-normal text-emerald-800">/মাস</span>
+              </div>
+            </div>
+            <div className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{currentLanguage === 'bn' ? 'সবচেয়ে কম নগদ চাপ (Lowest Pressure)' : 'Lowest Cash-Flow Pressure'}</span>
+            </div>
+          </div>
+
+          {/* Option 2 */}
+          <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-2">
+            <div className="text-xs font-bold text-slate-900">
+              {currentLanguage === 'bn' ? '২. বাণিজ্যিক এসএমই ব্যাংক লোন' : '2. Commercial SME Bank Loan'}
+            </div>
+            <div className="text-[11px] text-slate-500">
+              {currentLanguage === 'bn' ? 'সুদের হার: ৯.৫% বার্ষিক' : 'Interest: 9.5% p.a.'}
+            </div>
+            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="text-[10px] text-slate-600 font-semibold">
+                {currentLanguage === 'bn' ? 'আনুমানিক মাসিক কিস্তি (EMI)' : 'Estimated Monthly EMI'}
+              </div>
+              <div className="text-lg font-black text-slate-800">
+                ~৳৫,২৯৬ <span className="text-[10px] font-normal text-slate-500">/মাস</span>
+              </div>
+            </div>
+            <div className="text-[10px] font-semibold text-amber-700 flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5" />
+              <span>{currentLanguage === 'bn' ? 'মাঝারি চাপ (+৳১২০ বেশি কিস্তি)' : 'Medium Pressure (+120 Tk EMI)'}</span>
+            </div>
+          </div>
+
+          {/* Option 3 */}
+          <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-2">
+            <div className="text-xs font-bold text-slate-900">
+              {currentLanguage === 'bn' ? '৩. চালান ফ্যাক্টরিং (অগ্রিম পাওনা)' : '3. Invoice Factoring'}
+            </div>
+            <div className="text-[11px] text-slate-500">
+              {currentLanguage === 'bn' ? 'বেঙ্গল গার্মেন্টস মার্টের বকেয়া বিলের বিপরীতে' : 'Against 45,000 Tk receivable'}
+            </div>
+            <div className="p-2.5 bg-sky-50 rounded-xl border border-sky-200">
+              <div className="text-[10px] text-sky-800 font-semibold">
+                {currentLanguage === 'bn' ? 'মাসিক কিস্তির দায়' : 'Monthly Debt Obligation'}
+              </div>
+              <div className="text-lg font-black text-sky-700">
+                ৳০ <span className="text-[10px] font-normal text-sky-800">({currentLanguage === 'bn' ? 'কোনো কিস্তি নেই' : 'Zero EMI'})</span>
+              </div>
+            </div>
+            <div className="text-[10px] font-bold text-sky-700 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{currentLanguage === 'bn' ? 'জিরো ঋণ ঝুঁকি (নগদ অগ্রিম)' : 'Zero Debt (Factored Advance)'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 4 Matched Options Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {financingOptions.map((opt) => (
