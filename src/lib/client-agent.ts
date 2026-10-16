@@ -6,6 +6,7 @@ import {
   SupportedCurrency,
   convertCurrency,
   getDefaultTargetProfit,
+  getOverdueThreshold,
 } from './currency';
 
 export interface AgentResponse {
@@ -60,115 +61,219 @@ export class ClientAgent {
 
     const q = this.convertBengaliDigits(sanitizedQuery);
 
-    // 1. Target Profit Goal
-    const profitMatch =
-      q.match(/(\d+[\d,]*)\s*(?:টাকা|tk|bdt|元|rmb|\$|rs|rupees)?\s*(?:লাভ|profit|ইনকাম|আয়|利润|赚|लाभ)/i) ||
-      q.match(/(?:লাভ|profit|ইনকাম|আয়|利润|赚|लाभ)\s*(?:করতে চাই|হিসাব|目标)?\s*(\d+[\d,]*)/i) ||
-      q.match(/(\d+[\d,]*)\s*(?:হাজার|k|万)/i);
+    // =========================================================================
+    // 1. CASUAL GREETINGS & SALAM (e.g. "kire ki obostha", "kemon acho", "hello")
+    // =========================================================================
+    const isGreeting =
+      q.includes('kire') ||
+      q.includes('ki obostha') ||
+      q.includes('ki obosta') ||
+      q.includes('kemon acho') ||
+      q.includes('kemon achen') ||
+      q.includes('kemne acho') ||
+      q.includes('hello') ||
+      q.includes('hi ') ||
+      q === 'hi' ||
+      q.includes('hey') ||
+      q.includes('salam') ||
+      q.includes('assalamu') ||
+      q.includes('hala') ||
+      q.includes('good morning') ||
+      q.includes('good afternoon') ||
+      q.includes('good evening');
 
-    const isGoalIntent =
-      profitMatch ||
-      q.includes('টার্গেট') ||
-      q.includes('লক্ষ্য') ||
-      q.includes('target') ||
-      q.includes('goal') ||
-      q.includes('目标') ||
-      q.includes('利润') ||
-      q.includes('लक्ष्य');
+    if (isGreeting) {
+      const ansBn = `আসসালামু আলাইকুম! আমি LedgerLoom-এর **AI CFO কোপাইলট**।
+কারখানার সামগ্রিক আর্থিক অবস্থা আলহামদুলিল্লাহ ভালো রয়েছে—চলতি মাসে নেট লাভ **+${health.netProfit.toLocaleString()} ${convertedProfile.currency}** এবং ক্যাশ ফ্লো সম্পূর্ণ ইতিবাচক।
 
-    if (isGoalIntent) {
-      let targetAmount = Number(getDefaultTargetProfit(currency));
-      if (profitMatch && profitMatch[1]) {
-        targetAmount = parseInt(profitMatch[1].replace(/,/g, ''), 10);
-        if (q.includes('万')) targetAmount *= 10000;
-      }
-      const plan = AccountingEngine.solveTargetProfit(convertedProfile, targetAmount, 'month');
+আমি আপনাকে নিচের আর্থিক বিষয়গুলোতে সাহায্য করতে পারি:
+• 🎯 **লাভের লক্ষ্য ঠিক করা:** যেমন *"সামনের মাসে ৮০ হাজার লাভ করতে কি করা লাগবে?"*
+• ⚠️ **বকেয়া টাকা আদায়:** যেমন *"কার কাছে কত টাকা বাকি আছে?"*
+• 🏦 **লোন ও ফাইন্যান্সিং বিকল্প:** যেমন *"লোনের অপশনগুলো দেখাও"*
+• 💡 **বিনিয়োগ সিদ্ধান্ত:** যেমন *"মেশিন কেনার জন্য লোন নেওয়া কি ঠিক হবে?"*
+• 📊 **খরচের হিসাব:** যেমন *"কোথায় সবচেয়ে বেশি খরচ হয়েছে?"*
 
-      const ansBn = `আগামী মাসে **${targetAmount.toLocaleString()} ${convertedProfile.currency}** নেট লাভ করতে হলে:
-- আপনাকে মোট **${plan.requiredUnits.toLocaleString()}টি ${convertedProfile.primaryProduct}** বিক্রি করতে হবে।
-- এর জন্য আনুমানিক **${plan.requiredFabricMeters.toLocaleString()} মিটার/একক কাঁচামাল** লাগবে (সম্ভাব্য খরচ: ${plan.requiredFabricCost.toLocaleString()} ${convertedProfile.currency})।
-- আপনার কারখানার মাসিক ফিক্সড কস্ট **${plan.totalFixedCost.toLocaleString()} ${convertedProfile.currency}** তুলতে প্রথম **${plan.breakEvenUnits.toLocaleString()}টি** পণ্য বিক্রি করতে হবে, এরপরের পণ্যগুলো থেকে লাভ আসবে।`;
+যেকোনো প্রশ্ন লিখে জানান, আমি সাথে সাথে গাণিতিক হিসাব করে দিচ্ছি।`;
 
-      const ansEn = `To achieve a target net profit of **${targetAmount.toLocaleString()} ${convertedProfile.currency}** next month:
-- You must produce and sell **${plan.requiredUnits.toLocaleString()} units of ${convertedProfile.primaryProduct}**.
-- Required raw material: approx **${plan.requiredFabricMeters.toLocaleString()} units** (Estimated budget: ${plan.requiredFabricCost.toLocaleString()} ${convertedProfile.currency}).
-- Break-even is at **${plan.breakEvenUnits.toLocaleString()} units** to cover factory fixed overhead (${plan.totalFixedCost.toLocaleString()} ${convertedProfile.currency}).`;
+      const ansEn = `Hello! I am your LedgerLoom AI CFO Copilot.
+Your factory financial runway is healthy with monthly net profit at **+${health.netProfit.toLocaleString()} ${convertedProfile.currency}** (Margin: ${health.netMarginPercentage}%).
 
-      const ansZh = `为了在下个月实现 **${targetAmount.toLocaleString()} ${convertedProfile.currency}** 的净利润目标：
-- 您需要生产并销售 **${plan.requiredUnits.toLocaleString()} 件 ${convertedProfile.primaryProduct}**。
-- 所需核心原材料采购量：约 **${plan.requiredFabricMeters.toLocaleString()} 单位**（预计采购预算：${plan.requiredFabricCost.toLocaleString()} ${convertedProfile.currency}）。
-- 工厂的保本平衡点为 **${plan.breakEvenUnits.toLocaleString()} 件**，用于覆盖每月固定开销（${plan.totalFixedCost.toLocaleString()} ${convertedProfile.currency}）。`;
-
-      const ansHi = `अगले महीने **${targetAmount.toLocaleString()} ${convertedProfile.currency}** शुद्ध लाभ कमाने के लिए:
-- आपको कुल **${plan.requiredUnits.toLocaleString()} यूनिट ${convertedProfile.primaryProduct}** बेचनी होंगी।
-- इसके लिए लगभग **${plan.requiredFabricMeters.toLocaleString()} यूनिट कच्चा माल** खरीदना होगा (अनुमानित लागत: ${plan.requiredFabricCost.toLocaleString()} ${convertedProfile.currency})।
-- कारखाने की स्थिर लागत निकालने के लिए शुरुआती **${plan.breakEvenUnits.toLocaleString()} यूनिट** बेचना अनिवार्य है।`;
-
-      const primary = lang === 'zh' ? ansZh : lang === 'bn' ? ansBn : lang === 'hi' ? ansHi : ansEn;
+How can I assist your business today?
+• 🎯 **Target Profit Planning:** e.g. "How to achieve 80,000 profit next month?"
+• ⚠️ **Overdue Debtors:** e.g. "Who owes money (>30,000)?"
+• 🏦 **Loan Options:** e.g. "Show financing options"
+• 💡 **CapEx Decisions:** e.g. "Should I take a loan to buy machines?"
+• 📊 **Overhead Breakdown:** e.g. "Where did we spend the most?"`;
 
       return {
-        answerPrimary: primary,
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
         answerBengali: ansBn,
         answerEnglish: ansEn,
-        executedTool: 'solveTargetProfit',
-        toolOutput: plan,
+        executedTool: 'cfoGreetings',
+        metricsSnapshot: health,
+      };
+    }
+
+    // =========================================================================
+    // 2. CONVERSATIONAL ACKNOWLEDGMENTS (e.g. "accha", "ok", "thik ache", "hmm")
+    // =========================================================================
+    const isAck =
+      q === 'accha' ||
+      q === 'acha' ||
+      q === 'achha' ||
+      q === 'ok' ||
+      q === 'okay' ||
+      q === 'thik ache' ||
+      q === 'thik ase' ||
+      q === 'tik ache' ||
+      q === 'humm' ||
+      q === 'hmm' ||
+      q === 'bujhlam' ||
+      q === 'understood' ||
+      q === 'got it' ||
+      q === 'sure';
+
+    if (isAck) {
+      const ansBn = `জি! আপনার কারখানার কোনো হিসাব, বকেয়া আদায়, ঋণের কিস্তি বা নতুন কোনো ব্যবসায়িক পরিকল্পনা সম্পর্কে জানতে চান কি? আপনি সরাসরি লিখে প্রশ্ন করতে পারেন।`;
+      const ansEn = `Understood! Let me know which financial metric, debtor alert, loan reconciliation, or profit target you would like to explore next.`;
+
+      return {
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'cfoAcknowledgment',
+        metricsSnapshot: health,
+      };
+    }
+
+    // =========================================================================
+    // 3. GRATITUDE & THANKS (e.g. "dhonnobad", "thanks", "thank you")
+    // =========================================================================
+    const isThanks =
+      q.includes('dhonnobad') ||
+      q.includes('thanks') ||
+      q.includes('thank you') ||
+      q.includes('thx') ||
+      q.includes('shukriya') ||
+      q.includes('ধন্যবাদ');
+
+    if (isThanks) {
+      const ansBn = `আপনাকেও অনেক ধন্যবাদ! আপনার ব্যবসার আর্থিক শৃঙ্খলা বজায় রাখা এবং লাভ বাড়ানোই আমার লক্ষ্য। যেকোনো সময় প্রশ্ন করতে পারেন।`;
+      const ansEn = `You are very welcome! Helping your business maintain strong financial health and sustainable profit is my primary mission.`;
+
+      return {
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'cfoGratitude',
+        metricsSnapshot: health,
+      };
+    }
+
+    // =========================================================================
+    // 4. IDENTITY & CAPABILITIES (e.g. "tumi ke", "who are you", "ki korte paro")
+    // =========================================================================
+    const isIdentity =
+      q.includes('tumi ke') ||
+      q.includes('who are you') ||
+      q.includes('ki korte paro') ||
+      q.includes('what can you do') ||
+      q.includes('tumi ki') ||
+      q.includes('kivabe kaj koro') ||
+      q.includes('help') ||
+      q.includes('সাহায্য');
+
+    if (isIdentity) {
+      const ansBn = `আমি **LedgerLoom AI CFO Copilot**—ক্ষুদ্র ও মাঝারি ব্যবসার (SME) জন্য তৈরি একটি স্বায়ত্তশাসিত আর্থিক উপদেষ্টা।
+
+আমার প্রধান সক্ষমতাসমূহ:
+১. **নিখুঁত গাণিতিক নিশ্চয়তা (Zero Hallucination):** আমি কোনো মনগড়া হিসাব করি না; সরাসরি আপনার কারখানার খরচ ও লেজার ডেটাবেজ থেকে সূত্র দিয়ে হিসাব করি।
+২. **টার্গেট প্রফিট প্ল্যান:** আগামী মাসে কত লাভ করতে চান বললে আমি প্রয়োজনীয় পণ্য সংখ্যা ও কাপড়ের গজ বের করে দিই।
+৩. **বকেয়া তাগাদা:** কার কাছে টাকা আটকে আছে তা চিহ্নিত করে স্বয়ংক্রিয় তাগাদা নোটিশ তৈরি করি।
+৪. **লোন ও কিস্তির হিসাব:** ঋণের মাসিক কিস্তি পরিশোধের চাপ এবং বাজারে উপযুক্ত জামানতবিহীন লোন তুলনা করে দিই।`;
+
+      const ansEn = `I am **LedgerLoom AI CFO Copilot**, an autonomous financial co-pilot tailored for SME business owners.
+Key Capabilities:
+1. Zero-Hallucination deterministic accounting engine.
+2. Reverse-engineered target profit breakdowns (required product units & raw materials).
+3. Overdue debtor monitoring with automated payment reminders.
+4. Capital expenditure stress-testing & loan EMI reconciliation.`;
+
+      return {
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'cfoCapabilities',
+        metricsSnapshot: health,
+      };
+    }
+
+    // =========================================================================
+    // 5. FINANCING OPTIONS INTENT (e.g. "lone er option gulo dekhao", "loan options")
+    // =========================================================================
+    const isFinancingMatchIntent =
+      q.includes('lone er option') ||
+      q.includes('loan er option') ||
+      q.includes('lone option') ||
+      q.includes('loan option') ||
+      q.includes('financing option') ||
+      q.includes('financing') ||
+      q.includes('credit option') ||
+      q.includes('show loans') ||
+      q.includes('what loans') ||
+      q.includes('বিকল্প লোন') ||
+      q.includes('লোন অপশন') ||
+      q.includes('লোনের অপশন') ||
+      q.includes('লোন বিকল্প') ||
+      q.includes('ঋণ বিকল্প') ||
+      q.includes('ব্যাংক লোন') ||
+      q.includes('loan scheme') ||
+      q.includes('lone scheme') ||
+      ((q.includes('lone') || q.includes('loan') || q.includes('লোন') || q.includes('ঋণ')) &&
+       (q.includes('option') || q.includes('অপশন') || q.includes('dekhao') || q.includes('দেকাও') || q.includes('দেখাও') || q.includes('kothay') || q.includes('bhalo') || q.includes('সুবিধা') || q.includes('list')));
+
+    if (isFinancingMatchIntent) {
+      const options = AccountingEngine.matchFinancingOptions(convertedProfile, health, debtors, lang, currency);
+      const top3 = options.slice(0, 3);
+
+      const topBn = top3
+        .map(
+          (opt, i) =>
+            `${i + 1}. **${opt.name}** (${opt.fitScorePercentage}% ম্যাচ)\n   • সুদের হার: ${opt.interestRateText} | মেয়াদ: ${opt.tenureMonths} মাস\n   • সর্বোচ্চ সীমা: ${opt.maxAmount.toLocaleString()} ${convertedProfile.currency} (${opt.collateralRequired ? 'জামানতযুক্ত' : 'জামানতবিহীন'})\n   • উপযোগী কারণ: ${opt.explainableMatchReason}`
+        )
+        .join('\n\n');
+
+      const topEn = top3
+        .map(
+          (opt, i) =>
+            `${i + 1}. **${opt.name}** (${opt.fitScorePercentage}% Fit)\n   • Rate: ${opt.interestRateText} | Tenure: ${opt.tenureMonths} mos\n   • Limit: ${opt.maxAmount.toLocaleString()} ${convertedProfile.currency} (${opt.collateralRequired ? 'Secured' : 'Unsecured'})\n   • Match Reason: ${opt.explainableMatchReason}`
+        )
+        .join('\n\n');
+
+      const ansBn = `আপনার বর্তমান মাসিক ক্যাশ-ফ্লো, মুনাফা ও বকেয়া ইনভয়েস বিশ্লেষণ করে AI Underwriting ইঞ্জিন **৩টি সেরা ফাইন্যান্সিং বিকল্প** নির্ধারণ করেছে:\n\n${topBn}\n\n💡 আপনি সরাসরি ফাইন্যান্সিং ট্যাবে গিয়ে প্রতিটি স্কিমের বিস্তারিত তুলনা দেখতে পারেন।`;
+      const ansEn = `Based on your factory's monthly cash-flow, profits, and ledger receivables, our AI Underwriting Engine has matched **top 3 financing options**:\n\n${topEn}\n\n💡 You can review all options in the Financing Matcher tab.`;
+
+      return {
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'matchFinancingOptions',
+        toolOutput: options,
         suggestedAction: {
-          type: 'open_goal_modal',
-          label: lang === 'zh' ? '查看目标拆解方案' : lang === 'bn' ? 'টার্গেট প্রফিট প্ল্যান দেখুন' : lang === 'hi' ? 'लक्ष्य योजना देखें' : 'View Target Plan',
-          labelEnglish: 'View Detailed Target Plan',
+          type: 'show_financing',
+          label: lang === 'bn' ? 'সম্পূর্ণ ফাইন্যান্সিং তুলনা দেখুন' : 'View Financing Comparison',
+          labelEnglish: 'View Full Financing Comparison Table',
         },
         metricsSnapshot: health,
       };
     }
 
-    // 2. Debtors / Overdue
-    const isDebtorIntent =
-      q.includes('বাকি') ||
-      q.includes('পাওনা') ||
-      q.includes('debtor') ||
-      q.includes('receivable') ||
-      q.includes('customer') ||
-      q.includes('欠款') ||
-      q.includes('应收') ||
-      q.includes('बकाया');
-
-    if (isDebtorIntent) {
-      const overdueList = debtors.filter((d) => d.status === 'overdue' && d.type === 'receivable');
-      const totalOverdue = overdueList.reduce((sum, d) => sum + conv(d.amount), 0);
-
-      const ansBn = `বর্তমানে **${overdueList.length}টি পার্টির** কাছে মোট **${totalOverdue.toLocaleString()} ${currency}** পাওনা বকেয়া রয়েছে:
-${overdueList.map((d) => `- **${d.partyName}**: ${conv(d.amount).toLocaleString()} ${currency} (বকেয়া: ${d.notes || 'জরুরি তাগাদা প্রয়োজন'})`).join('\n')}`;
-
-      const ansEn = `Currently, **${overdueList.length} clients** have overdue receivables totaling **${totalOverdue.toLocaleString()} ${currency}**:
-${overdueList.map((d) => `- **${d.partyName}**: ${conv(d.amount).toLocaleString()} ${currency} (Notes: ${d.notes || 'Immediate collection required'})`).join('\n')}`;
-
-      const ansZh = `当前共有 **${overdueList.length} 家客户** 逾期未还款，累计逾期应收款项为 **${totalOverdue.toLocaleString()} ${currency}**：
-${overdueList.map((d) => `- **${d.partyName}**: ${conv(d.amount).toLocaleString()} ${currency}（说明：${d.notes || '需立即催收'}）`).join('\n')}`;
-
-      const ansHi = `वर्तमान में **${overdueList.length} ग्राहकों** पर कुल **${totalOverdue.toLocaleString()} ${currency}** बकाया है:
-${overdueList.map((d) => `- **${d.partyName}**: ${conv(d.amount).toLocaleString()} ${currency}`).join('\n')}`;
-
-      const primary = lang === 'zh' ? ansZh : lang === 'bn' ? ansBn : lang === 'hi' ? ansHi : ansEn;
-
-      return {
-        answerPrimary: primary,
-        answerBengali: ansBn,
-        answerEnglish: ansEn,
-        executedTool: 'getOverdueDebtors',
-        toolOutput: { overdueCount: overdueList.length, totalOverdue, overdueList },
-        suggestedAction: {
-          type: 'show_debtors',
-          label: lang === 'zh' ? '前往逾期催收' : lang === 'bn' ? 'বকেয়া তালিকা দেখুন' : lang === 'hi' ? 'बकाया सूची देखें' : 'View Debtors',
-          labelEnglish: 'Go to Debtors & Collection',
-        },
-        metricsSnapshot: health,
-      };
-    }
-
-    // 3. New Loan Evaluation & Multi-Step Reasoning (e.g. "মেশিন কেনার জন্য লোন নেওয়া কি ঠিক হবে?")
+    // =========================================================================
+    // 6. MACHINE / CAPITAL EXPENDITURE LOAN DECISION FRAMEWORK
+    // =========================================================================
     const isLoanEvaluationIntent =
-      (q.includes('মেশিন') || q.includes('machine') || q.includes('নিতে চাই') || q.includes('ঠিক হবে') || q.includes('should i') || q.includes('invest') || q.includes('বিনিয়োগ')) &&
-      (q.includes('ঋণ') || q.includes('loan') || q.includes('লোন') || q.includes('贷款') || q.includes('कर्ज'));
+      (q.includes('মেশিন') || q.includes('machine') || q.includes('meshin') || q.includes('invest') || q.includes('biniyog') || q.includes('বিনিয়োগ') || q.includes('kinte') || q.includes('kenar')) &&
+      (q.includes('ঋণ') || q.includes('loan') || q.includes('লোন') || q.includes('lone') || q.includes('lon'));
 
     if (isLoanEvaluationIntent) {
       const defaultLoan = conv(50000);
@@ -193,122 +298,38 @@ ${overdueList.map((d) => `- **${d.partyName}**: ${conv(d.amount).toLocaleString(
 
 💡 **Conclusion:** Approved. Your factory cash runway comfortably supports this capital expenditure.`;
 
-      const ansZh = `🧠 **AI 首席财务官多步逻辑推理架构 (3步决策分析法)：**
-
-• **第 1 步 (当前盈利校验):** 工厂当前月度净利润为 **${health.netProfit.toLocaleString()} ${convertedProfile.currency}**。
-• **第 2 步 (现金流压力测试):** 针对 ${prospectiveAmount.toLocaleString()} ${convertedProfile.currency} 的设备融资，按 8.5% 年化测算 24 期月供约为 **${sim.monthlyEMI.toLocaleString()} ${convertedProfile.currency}**。扣除还贷后月度现金结余仍保持在 **+${postEmiProfit.toLocaleString()} ${convertedProfile.currency}**。
-• **第 3 步 (最优信贷方案匹配):** 强烈推荐优先匹配 **“设备融资租赁 (Machinery Lease)”**，直接以新设备作为物权担保。
-
-💡 **决策结论:** 经压力测试，该笔资本开支完全在您的安全现金流承受范围内。`;
-
-      const ansHi = `🧠 **एआई सीएफओ बहु-चरणीय निर्णय ढाँचा (3 चरणों में विश्लेषण):**
-
-• **चरण 1 (लाभप्रदता जांच):** आपके कारखाने का वर्तमान मासिक शुद्ध लाभ **${health.netProfit.toLocaleString()} ${convertedProfile.currency}** है।
-• **चरण 2 (नकदी प्रवाह तनाव परीक्षण):** ${prospectiveAmount.toLocaleString()} ${convertedProfile.currency} ऋण के लिए 24 माह की अनुमानित मासिक किस्त **${sim.monthlyEMI.toLocaleString()} ${convertedProfile.currency}** होगी।
-• **चरण 3 (योजना मिलान):** सामान्य ऋण के बजाय **'मशीनरी लीजिंग'** विकल्प चुनें।
-
-💡 **निष्कर्ष:** अनुमोदित। आपका नकदी प्रवाह इस निवेश को वहन करने में सक्षम है।`;
-
-      const primary = lang === 'zh' ? ansZh : lang === 'bn' ? ansBn : lang === 'hi' ? ansHi : ansEn;
-
       return {
-        answerPrimary: primary,
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
         answerBengali: ansBn,
         answerEnglish: ansEn,
         executedTool: 'evaluateEquipmentLoanEligibility',
         toolOutput: { sim, postEmiProfit },
         suggestedAction: {
           type: 'show_financing',
-          label: lang === 'zh' ? '查看信贷方案列表' : lang === 'bn' ? 'ম্যাচিং ফাইন্যান্সিং বিকল্প দেখুন' : lang === 'hi' ? 'वित्त विकल्प देखें' : 'View Financing Options',
+          label: lang === 'bn' ? 'ম্যাচিং ফাইন্যান্সিং বিকল্প দেখুন' : 'View Financing Options',
           labelEnglish: 'View Financing Options',
         },
         metricsSnapshot: health,
       };
     }
 
-    // 4. Financing Matching Intent (e.g. "লোনের অপশনগুলো দেখাও" or "financing options")
-    const isFinancingMatchIntent =
-      q.includes('লোনের অপশন') ||
-      q.includes('লোন অপশন') ||
-      q.includes('ফাইন্যান্সিং') ||
-      q.includes('বিকল্প লোন') ||
-      q.includes('loan option') ||
-      q.includes('financing') ||
-      q.includes('credit option') ||
-      q.includes('show loans') ||
-      q.includes('what loans') ||
-      q.includes('贷款方案') ||
-      q.includes('融资方案') ||
-      q.includes('推荐贷款') ||
-      q.includes('ঋণ বিকল্প');
-
-    if (isFinancingMatchIntent) {
-      const options = AccountingEngine.matchFinancingOptions(convertedProfile, health, debtors, lang, currency);
-      const top3 = options.slice(0, 3);
-
-      const topBn = top3
-        .map(
-          (opt, i) =>
-            `${i + 1}. **${opt.name}** (${opt.fitScorePercentage}% ম্যাচ)\n   • সুদের হার: ${opt.interestRateText} | মেয়াদ: ${opt.tenureMonths} মাস\n   • সর্বোচ্চ সীমা: ${opt.maxAmount.toLocaleString()} ${convertedProfile.currency} (${opt.collateralRequired ? 'জামানতযুক্ত' : 'জামানতবিহীন'})\n   • উপযোগী কারণ: ${opt.explainableMatchReason}`
-        )
-        .join('\n\n');
-
-      const topEn = top3
-        .map(
-          (opt, i) =>
-            `${i + 1}. **${opt.name}** (${opt.fitScorePercentage}% Fit)\n   • Rate: ${opt.interestRateText} | Tenure: ${opt.tenureMonths} mos\n   • Limit: ${opt.maxAmount.toLocaleString()} ${convertedProfile.currency} (${opt.collateralRequired ? 'Secured' : 'Unsecured'})\n   • Match Reason: ${opt.explainableMatchReason}`
-        )
-        .join('\n\n');
-
-      const topZh = top3
-        .map(
-          (opt, i) =>
-            `${i + 1}. **${opt.name}**（匹配度: ${opt.fitScorePercentage}%）\n   • 利率: ${opt.interestRateText} | 期限: ${opt.tenureMonths} 个月\n   • 额度: ${opt.maxAmount.toLocaleString()} ${convertedProfile.currency}\n   • 匹配理由: ${opt.explainableMatchReason}`
-        )
-        .join('\n\n');
-
-      const topHi = top3
-        .map(
-          (opt, i) =>
-            `${i + 1}. **${opt.name}** (${opt.fitScorePercentage}% मैच)\n   • ब्याज दर: ${opt.interestRateText} | अवधि: ${opt.tenureMonths} माह\n   • अधिकतम सीमा: ${opt.maxAmount.toLocaleString()} ${convertedProfile.currency}\n   • उपयुक्तता: ${opt.explainableMatchReason}`
-        )
-        .join('\n\n');
-
-      const ansBn = `আপনার বর্তমান মাসিক ক্যাশ-ফ্লো, আয় ও বকেয়া ইনভয়েস অ্যানালাইসিস করে AI Underwriting ইঞ্জিন **৩টি সেরা ফাইন্যান্সিং বিকল্প** নির্ধারণ করেছে:\n\n${topBn}\n\n💡 আপনি সরাসরি ফাইন্যান্সিং স্যান্ডবক্স থেকে বিস্তারিত দেখে আবেদন করতে পারবেন।`;
-      const ansEn = `Based on your monthly cash-flow, revenues, and receivables, our AI Underwriting Engine has matched **top 3 financing options**:\n\n${topEn}\n\n💡 You can apply directly through the Financing Sandbox.`;
-      const ansZh = `基于您的月度现金流、营收数据与应收账款，AI 智能信贷核保引擎为您优选匹配了 **3 个最具性价比的融资方案**：\n\n${topZh}\n\n💡 您可在“融资方案”标签页查看完整对比。`;
-      const ansHi = `आपके मासिक नकदी प्रवाह और राजस्व के आधार पर एआई ने **3 शीर्ष वित्त विकल्प** चुने हैं:\n\n${topHi}`;
-
-      const primary = lang === 'zh' ? ansZh : lang === 'bn' ? ansBn : lang === 'hi' ? ansHi : ansEn;
-
-      return {
-        answerPrimary: primary,
-        answerBengali: ansBn,
-        answerEnglish: ansEn,
-        executedTool: 'matchFinancingOptions',
-        toolOutput: options,
-        suggestedAction: {
-          type: 'show_financing',
-          label: lang === 'zh' ? '查看全部融资对比表' : lang === 'bn' ? 'সম্পূর্ণ ফাইন্যান্সিং তুলনা দেখুন' : lang === 'hi' ? 'पूर्ण वित्त तुलना देखें' : 'View Financing Comparison',
-          labelEnglish: 'View Full Financing Comparison Table',
-        },
-        metricsSnapshot: health,
-      };
-    }
-
-    // 5. Loans & Reconciliation Intent (e.g. "ঋণ কত বাকি আছে এবং মাসিক কিস্তির হিসাব দাও")
+    // =========================================================================
+    // 7. LOAN BALANCE & MONTHLY EMI (e.g. "ঋণ কত বাকি আছে এবং মাসিক কিস্তির হিসাব দাও")
+    // =========================================================================
     const isLoanIntent =
-      q.includes('ঋণ') ||
-      q.includes('দেনা') ||
-      q.includes('কিস্তি') ||
-      q.includes('loan') ||
-      q.includes('reconcile') ||
+      q.includes('kisti') ||
+      q.includes('kistee') ||
       q.includes('emi') ||
-      q.includes('贷款') ||
-      q.includes('还款') ||
-      q.includes('月供') ||
-      q.includes('कर्ज') ||
-      q.includes('किस्त');
+      q.includes('কিস্তি') ||
+      q.includes('দেনা') ||
+      q.includes('মাসিক কিস্তি') ||
+      q.includes('ঋণ কত') ||
+      q.includes('ঋণের হিসাব') ||
+      q.includes('loan baki') ||
+      q.includes('lone baki') ||
+      q.includes('rin baki') ||
+      q.includes('how much debt') ||
+      q.includes('remaining debt');
 
     if (isLoanIntent) {
       const loanSummary = AccountingEngine.reconcileAllLoans(loans, currency);
@@ -321,11 +342,11 @@ ${overdueList.map((d) => `- **${d.partyName}**: ${conv(d.amount).toLocaleString(
         (l) => `• **${l.lender}**: Remaining balance ${l.remaining.toLocaleString()} ${convertedProfile.currency} (Monthly EMI: ${l.emi.toLocaleString()} ${convertedProfile.currency}, Next payment: ${l.nextDate})`
       ).join('\n');
 
-      const ansBn = `আপনার বর্তমানে **${loanSummary.activeLoanCount}টি সক্রিয় ঋণ** রয়েছে:
+      const ansBn = `আপনার কারখানার বর্তমানে **${loanSummary.activeLoanCount}টি সক্রিয় ঋণ** রয়েছে:
 ${loanDetailsBn}
 
 - মোট অবশিষ্ট ঋণের পরিমাণ: **${loanSummary.totalRemainingDebt.toLocaleString()} ${convertedProfile.currency}**
-- প্রতি মাসে মোট কিস্তির বাধ্যবাধকতা: **${loanSummary.totalMonthlyEMIObligation.toLocaleString()} ${convertedProfile.currency}**`;
+- প্রতি মাসে মোট কিস্তির বাধ্যবাধকতা (EMI): **${loanSummary.totalMonthlyEMIObligation.toLocaleString()} ${convertedProfile.currency}**`;
 
       const ansEn = `You currently have **${loanSummary.activeLoanCount} active loan(s)**:
 ${loanDetailsEn}
@@ -333,10 +354,8 @@ ${loanDetailsEn}
 - Total Remaining Debt: **${loanSummary.totalRemainingDebt.toLocaleString()} ${convertedProfile.currency}**
 - Total Monthly EMI Obligation: **${loanSummary.totalMonthlyEMIObligation.toLocaleString()} ${convertedProfile.currency}**`;
 
-      const primary = lang === 'bn' ? ansBn : ansEn;
-
       return {
-        answerPrimary: primary,
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
         answerBengali: ansBn,
         answerEnglish: ansEn,
         executedTool: 'reconcileAllLoans',
@@ -350,19 +369,73 @@ ${loanDetailsEn}
       };
     }
 
-    // 6. Expense Breakdown Intent (e.g. "কোথায় সবচেয়ে বেশি খরচ হয়েছে?")
+    // =========================================================================
+    // 8. DEBTORS & OVERDUE RECEIVABLES (e.g. "কার কাছে কত টাকা বাকি আছে?")
+    // =========================================================================
+    const isDebtorIntent =
+      q.includes('baki') ||
+      q.includes('bakir') ||
+      q.includes('paona') ||
+      q.includes('pabo') ||
+      q.includes('debtor') ||
+      q.includes('receivable') ||
+      q.includes('due') ||
+      q.includes('overdue') ||
+      q.includes('customer') ||
+      q.includes('taka dey nai') ||
+      q.includes('takada') ||
+      q.includes('tagada') ||
+      q.includes('বাকি') ||
+      q.includes('পাওনা') ||
+      q.includes('বকেয়া') ||
+      q.includes('তাগাদা');
+
+    if (isDebtorIntent) {
+      const riskThreshold = getOverdueThreshold(currency);
+      const overdueList = debtors.filter((d) => d.type === 'receivable' && conv(d.amount) >= riskThreshold);
+      const totalOverdue = debtors.filter((d) => d.type === 'receivable').reduce((sum, d) => sum + conv(d.amount), 0);
+
+      const ansBn = `বর্তমানে আপনার মোট বকেয়া পাওনা (Receivables) **${totalOverdue.toLocaleString()} ${convertedProfile.currency}**। 
+এর মধ্যে **${overdueList.length}টি পার্টির** বকেয়া ${riskThreshold.toLocaleString()} ${convertedProfile.currency} এর সীমা ছাড়িয়ে গেছে:
+${overdueList.map((d) => `• **${d.partyName}**: বকেয়া ${conv(d.amount).toLocaleString()} ${convertedProfile.currency} (মেয়াদ: ${d.dueDate})`).join('\n')}
+
+💡 জরুরি ভিত্তিতে তাদের কাছে তাগাদা মেসেজ পাঠানোর প্রস্তাব করা হচ্ছে।`;
+
+      const ansEn = `You have total outstanding receivables of **${totalOverdue.toLocaleString()} ${convertedProfile.currency}**.
+There are **${overdueList.length} account(s)** exceeding the ${riskThreshold.toLocaleString()} ${convertedProfile.currency} risk threshold:
+${overdueList.map((d) => `• **${d.partyName}**: ${conv(d.amount).toLocaleString()} ${convertedProfile.currency} (Due: ${d.dueDate})`).join('\n')}
+
+💡 Recommended action: Send automated reminder notices to overdue accounts.`;
+
+      return {
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'getOverdueDebtors',
+        toolOutput: { overdueCount: overdueList.length, totalOverdue, overdueList },
+        suggestedAction: {
+          type: 'show_debtors',
+          label: lang === 'bn' ? 'বকেয়া তালিকা ও তাগাদা দেখুন' : 'Review Overdue Debtors',
+          labelEnglish: 'Review Overdue Debtors & Send Reminders',
+        },
+        metricsSnapshot: health,
+      };
+    }
+
+    // =========================================================================
+    // 9. EXPENSE BREAKDOWN & OVERHEAD (e.g. "কোথায় সবচেয়ে বেশি খরচ হয়েছে?")
+    // =========================================================================
     const isExpenseIntent =
-      q.includes('কোথায় সবচেয়ে বেশি খরচ') ||
-      q.includes('সবচেয়ে বেশি খরচ') ||
-      q.includes('খরচ কোথায়') ||
-      q.includes('খরচের হিসাব') ||
-      q.includes('খরচ') ||
-      q.includes('spend the most') ||
-      q.includes('highest cost') ||
-      q.includes('overhead') ||
+      q.includes('khoroch') ||
+      q.includes('koroch') ||
       q.includes('expense') ||
-      q.includes('成本最高') ||
-      q.includes('सबसे ज्यादा खर्च');
+      q.includes('overhead') ||
+      q.includes('cost') ||
+      q.includes('kothay beshi') ||
+      q.includes('beshi khoroch') ||
+      q.includes('bill') ||
+      q.includes('খরচ') ||
+      q.includes('কোথায় সবচেয়ে বেশি খরচ');
 
     if (isExpenseIntent) {
       const salaries = convertedProfile.workerSalariesMonthly || 0;
@@ -398,10 +471,8 @@ ${items.map((it) => `  • ${it.nameEn}: ${it.amount.toLocaleString()} ${convert
 
 💡 **CFO Recommendation:** Optimize fixed utility bills and purchase raw materials in volume batches to increase unit gross margins.`;
 
-      const primary = lang === 'bn' ? ansBn : ansEn;
-
       return {
-        answerPrimary: primary,
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
         answerBengali: ansBn,
         answerEnglish: ansEn,
         executedTool: 'getExpenseBreakdown',
@@ -410,43 +481,129 @@ ${items.map((it) => `  • ${it.nameEn}: ${it.amount.toLocaleString()} ${convert
       };
     }
 
-    // 7. Default Overview
-    const ansBn = `কারখানার বর্তমান আর্থিক বিশ্লেষণ (${convertedProfile.currency}):
-- মোট রাজস্ব: **${health.totalRevenue.toLocaleString()} ${convertedProfile.currency}**
-- ফিক্সড খরচ: **${health.totalFixedCosts.toLocaleString()} ${convertedProfile.currency}**
-- ভ্যারিয়েবল খরচ: **${health.totalVariableCosts.toLocaleString()} ${convertedProfile.currency}**
-- নিট লাভ: **${health.netProfit > 0 ? '+' : ''}${health.netProfit.toLocaleString()} ${convertedProfile.currency}** (মার্জিন: ${health.netMarginPercentage}%)
-- ব্রেক-ইভেন অগ্রগতি: **${health.breakEvenProgressPercentage}%**`;
+    // =========================================================================
+    // 10. TARGET PROFIT & GOAL PLANNING (e.g. "৫০,০০০ টাকা লাভ করতে কি করতে হবে?")
+    // =========================================================================
+    const profitMatch =
+      q.match(/(\d+[\d,]*)\s*(?:টাকা|tk|bdt|元|rmb|\$|rs|rupees)?\s*(?:লাভ|profit|ইনকাম|আয়|labh)/i) ||
+      q.match(/(?:লাভ|profit|ইনকাম|আয়|labh)\s*(?:করতে চাই|হিসাব|目标)?\s*(\d+[\d,]*)/i) ||
+      q.match(/(\d+[\d,]*)\s*(?:হাজার|k|hajar|lakh|লাখ)/i);
 
-    const ansEn = `Current Financial Snapshot (${convertedProfile.currency}):
+    const isGoalIntent =
+      profitMatch ||
+      q.includes('টার্গেট') ||
+      q.includes('লক্ষ্য') ||
+      q.includes('target') ||
+      q.includes('goal') ||
+      q.includes('লাভ') ||
+      q.includes('profit') ||
+      q.includes('labh') ||
+      q.includes('koto bechte hobe') ||
+      q.includes('koto bikri');
+
+    if (isGoalIntent) {
+      let targetAmount = Number(getDefaultTargetProfit(currency));
+      if (profitMatch && profitMatch[1]) {
+        targetAmount = parseInt(profitMatch[1].replace(/,/g, ''), 10);
+        if (q.includes('হাজার') || q.includes('hajar') || q.includes('k')) targetAmount *= 1000;
+        if (q.includes('লাখ') || q.includes('lakh')) targetAmount *= 100000;
+      }
+      const plan = AccountingEngine.solveTargetProfit(convertedProfile, targetAmount, 'month');
+
+      const ansBn = `আগামী মাসে **${targetAmount.toLocaleString()} ${convertedProfile.currency}** নেট লাভ করতে হলে:
+- আপনাকে মোট **${plan.requiredUnits.toLocaleString()}টি ${convertedProfile.primaryProduct}** বিক্রি করতে হবে।
+- এর জন্য আনুমানিক **${plan.requiredFabricMeters.toLocaleString()} মিটার/একক কাঁচামাল** কিনতে হবে (সম্ভাব্য খরচ: ${plan.requiredFabricCost.toLocaleString()} ${convertedProfile.currency})।
+- আপনার কারখানার মাসিক ফিক্সড কস্ট **${plan.totalFixedCost.toLocaleString()} ${convertedProfile.currency}** তুলতে প্রথম **${plan.breakEvenUnits.toLocaleString()}টি** পণ্য বিক্রি করতে হবে, এরপরের পণ্যগুলো থেকে লাভ আসবে।`;
+
+      const ansEn = `To achieve a target net profit of **${targetAmount.toLocaleString()} ${convertedProfile.currency}** next month:
+- You must produce and sell **${plan.requiredUnits.toLocaleString()} units of ${convertedProfile.primaryProduct}**.
+- Required raw material: approx **${plan.requiredFabricMeters.toLocaleString()} units** (Estimated budget: ${plan.requiredFabricCost.toLocaleString()} ${convertedProfile.currency}).
+- Break-even is at **${plan.breakEvenUnits.toLocaleString()} units** to cover factory fixed overhead (${plan.totalFixedCost.toLocaleString()} ${convertedProfile.currency}).`;
+
+      return {
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'solveTargetProfit',
+        toolOutput: plan,
+        suggestedAction: {
+          type: 'open_goal_modal',
+          label: lang === 'bn' ? 'টার্গেট প্রফিট প্ল্যান দেখুন' : 'View Target Plan',
+          labelEnglish: 'View Detailed Target Plan',
+        },
+        metricsSnapshot: health,
+      };
+    }
+
+    // =========================================================================
+    // 11. GENERAL FINANCIAL HEALTH QUERY (Explicitly asking about status)
+    // =========================================================================
+    const isHealthQuery =
+      q.includes('health') ||
+      q.includes('snapshot') ||
+      q.includes('performance') ||
+      q.includes('overall') ||
+      q.includes('summary') ||
+      q.includes('অবস্থা') ||
+      q.includes('status') ||
+      q.includes('লেজার');
+
+    if (isHealthQuery) {
+      const bep = AccountingEngine.calculateBreakEven(convertedProfile);
+
+      const ansBn = `কারখানার বর্তমান আর্থিক বিশ্লেষণ (অক্টোবর ২০২৬):
+- মোট রাজস্ব: **${health.totalRevenue.toLocaleString()} ${convertedProfile.currency}**
+- ফিক্সড খরচ (বেতন, ভাড়া, ইউটিলিটি): **${health.totalFixedCosts.toLocaleString()} ${convertedProfile.currency}**
+- ভ্যারিয়েবল খরচ (কাঁচামাল ও উৎপাদন): **${health.totalVariableCosts.toLocaleString()} ${convertedProfile.currency}**
+- নিট লাভ: **${health.netProfit > 0 ? '+' : ''}${health.netProfit.toLocaleString()} ${convertedProfile.currency}** (মার্জিন: ${health.netMarginPercentage}%)
+- ব্রেক-ইভেন অগ্রগতি: **${health.breakEvenProgressPercentage}%** (ব্রেক-ইভেন লক্ষ্য: ${bep.breakEvenRevenue.toLocaleString()} ${convertedProfile.currency})`;
+
+      const ansEn = `Current Financial Snapshot (${convertedProfile.currency}):
 - Total Revenue: **${health.totalRevenue.toLocaleString()} ${convertedProfile.currency}**
 - Fixed Overhead: **${health.totalFixedCosts.toLocaleString()} ${convertedProfile.currency}**
 - Variable Costs: **${health.totalVariableCosts.toLocaleString()} ${convertedProfile.currency}**
 - Net Profit: **${health.netProfit > 0 ? '+' : ''}${health.netProfit.toLocaleString()} ${convertedProfile.currency}** (Margin: ${health.netMarginPercentage}%)
 - Break-Even Progress: **${health.breakEvenProgressPercentage}%**`;
 
-    const ansZh = `当前财务全景指标 (${convertedProfile.currency})：
-- 总营业额：**${health.totalRevenue.toLocaleString()} ${convertedProfile.currency}**
-- 固定运营开销：**${health.totalFixedCosts.toLocaleString()} ${convertedProfile.currency}**
-- 可变材料与加工成本：**${health.totalVariableCosts.toLocaleString()} ${convertedProfile.currency}**
-- 净利润：**${health.netProfit > 0 ? '+' : ''}${health.netProfit.toLocaleString()} ${convertedProfile.currency}** (利润率: ${health.netMarginPercentage}%)
-- 保本达成度：**${health.breakEvenProgressPercentage}%**`;
+      return {
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'computeFinancialHealth',
+        toolOutput: health,
+        metricsSnapshot: health,
+      };
+    }
 
-    const ansHi = `वर्तमान वित्तीय सारांश (${convertedProfile.currency}):
-- कुल राजस्व: **${health.totalRevenue.toLocaleString()} ${convertedProfile.currency}**
-- स्थिर लागत: **${health.totalFixedCosts.toLocaleString()} ${convertedProfile.currency}**
-- परिवर्तनशील लागत: **${health.totalVariableCosts.toLocaleString()} ${convertedProfile.currency}**
-- शुद्ध लाभ: **${health.netProfit > 0 ? '+' : ''}${health.netProfit.toLocaleString()} ${convertedProfile.currency}**
-- ब्रेक-इवन प्रगति: **${health.breakEvenProgressPercentage}%**`;
+    // =========================================================================
+    // 12. HELPFUL FALLBACK (When user asks something unrecognized)
+    // =========================================================================
+    const fallbackBn = `আপনার বার্তাটি পেয়েছি! একজন এআই সিএফও (AI CFO) হিসেবে আমি মূলত আপনার কারখানার গাণিতিক হিসাব ও আর্থিক সিদ্ধান্ত নিয়ে কাজ করি।
 
-    const primary = lang === 'zh' ? ansZh : lang === 'bn' ? ansBn : lang === 'hi' ? ansHi : ansEn;
+আপনি নিচের যেকোনো বিষয় লিখে প্রশ্ন করতে পারেন:
+১. 🎯 **লাভের লক্ষ্য:** যেমন *"সামনের মাসে ৫০,০০০ টাকা লাভ করতে কি করতে হবে?"*
+২. ⚠️ **বকেয়া টাকা:** যেমন *"কার কাছে কত টাকা বাকি আছে?"*
+৩. 🏦 **লোন বিকল্প:** যেমন *"লোনের অপশনগুলো দেখাও"*
+৪. 💳 **ঋণের কিস্তি:** যেমন *"ঋণ কত বাকি আছে এবং কিস্তির হিসাব দাও"*
+৫. 💡 **বিনিয়োগ পরামর্শ:** যেমন *"মেশিন কেনার জন্য লোন নেওয়া কি ঠিক হবে?"*
+৬. 📊 **খরচের হিসাব:** যেমন *"কোথায় সবচেয়ে বেশি খরচ হয়েছে?"*
+
+আপনি কোন বিষয়ে জানতে চান তা লিখে পাঠান!`;
+
+    const fallbackEn = `I received your message! As your AI CFO, I specialize in precise financial computations, break-even calculus, debtor collection, and loan evaluations.
+
+Feel free to ask questions like:
+1. Target Profit: "How to make 50,000 profit next month?"
+2. Debtors: "Who owes overdue money (>30,000)?"
+3. Loans: "Show financing options" or "How much debt is remaining?"
+4. Capex: "Should I take a loan to buy machinery?"
+5. Overheads: "Where did we spend the most?"`;
 
     return {
-      answerPrimary: primary,
-      answerBengali: ansBn,
-      answerEnglish: ansEn,
-      executedTool: 'computeFinancialHealth',
-      toolOutput: health,
+      answerPrimary: lang === 'bn' ? fallbackBn : fallbackEn,
+      answerBengali: fallbackBn,
+      answerEnglish: fallbackEn,
+      executedTool: 'cfoAssistance',
       metricsSnapshot: health,
     };
   }
