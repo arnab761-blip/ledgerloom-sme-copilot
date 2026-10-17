@@ -117,10 +117,10 @@ export const AuthGate: React.FC<AuthGateProps> = ({
     setPinDigits([]);
   };
 
-  // Verify PIN entered
+  // Verify PIN entered (Strictly checks active stored PIN without bypass)
   const verifyOwnerPin = (enteredPin: string) => {
     const correctPin = getStoredOwnerPin();
-    if (enteredPin === correctPin || enteredPin === '2026') {
+    if (enteredPin === correctPin) {
       handleSuccessfulLogin('owner', currentLanguage === 'bn' ? 'কারখানার মালিক (Owner)' : 'Business Owner');
     } else {
       setErrorMsg(
@@ -282,7 +282,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({
       handleSuccessfulLogin('manager', currentLanguage === 'bn' ? 'হিসাবরক্ষক / ম্যানেজার' : 'Finance Manager');
     } else if (code === 'JUDGE2026' || code === 'JUDGE' || code === 'GUEST' || code === 'INSPECTOR') {
       handleSuccessfulLogin('judge', currentLanguage === 'bn' ? 'সম্মানিত জাজ / পরিদর্শক' : 'Hackathon Judge / Auditor');
-    } else if (code === '2026' || code === getStoredOwnerPin()) {
+    } else if (code === getStoredOwnerPin()) {
       handleSuccessfulLogin('owner', currentLanguage === 'bn' ? 'কারখানার মালিক' : 'Business Owner');
     } else {
       setErrorMsg(
@@ -293,11 +293,14 @@ export const AuthGate: React.FC<AuthGateProps> = ({
     }
   };
 
-  // Complete Login
+  // Complete Login with Session Token Generation
   const handleSuccessfulLogin = (role: AuthRole, userName: string) => {
     setIsSuccess(true);
     setSuccessRole(role);
     if (typeof window !== 'undefined') {
+      const sessionToken = 'll_sess_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      sessionStorage.setItem('ledgerloom_session_token', sessionToken);
+      localStorage.setItem('ledgerloom_session_token', sessionToken);
       localStorage.setItem('ledgerloom_auth_role', role);
       localStorage.setItem('ledgerloom_auth_user', userName);
       localStorage.setItem('ledgerloom_auth_time', Date.now().toString());
@@ -348,12 +351,12 @@ export const AuthGate: React.FC<AuthGateProps> = ({
     }, 1600);
   };
 
-  // Handle Change PIN Submit
+  // Handle Change PIN Submit (Strictly checks active stored PIN without bypass)
   const handleChangePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const currentStored = getStoredOwnerPin();
 
-    if (currentPinInput.trim() !== currentStored && currentPinInput.trim() !== '2026') {
+    if (currentPinInput.trim() !== currentStored) {
       setChangePinMsg({
         type: 'error',
         text: currentLanguage === 'bn' ? '❌ বর্তমান পিন ভুল!' : '❌ Current PIN is incorrect!',
@@ -616,8 +619,8 @@ export const AuthGate: React.FC<AuthGateProps> = ({
 
               <p className="text-[11px] text-slate-400 mt-2">
                 {currentLanguage === 'bn'
-                  ? '💡 ফোনের স্ক্রিন বা লক/পাওয়ার বাটনের ফিঙ্গারপ্রিন্ট সেন্সর ব্যবহার করুন (অথবা পিন: 2026)'
-                  : '💡 Use phone fingerprint sensor or power button (or PIN: 2026)'}
+                  ? '💡 ফোনের স্ক্রিন বা লক/পাওয়ার বাটনের ফিঙ্গারপ্রিন্ট সেন্সর ব্যবহার করুন, অথবা ৪-ডিজিটের পিন কোড দিন।'
+                  : '💡 Use device biometric sensor or enter your 4-digit PIN.'}
               </p>
             </div>
 

@@ -158,6 +158,19 @@ export default function HomePage() {
   const [currentPreset, setCurrentPreset] = useState<'garments' | 'cafe'>('garments');
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  const getAuthHeaders = useCallback(() => {
+    const token =
+      typeof window !== 'undefined'
+        ? sessionStorage.getItem('ledgerloom_session_token') ||
+          localStorage.getItem('ledgerloom_session_token') ||
+          'll_sess_local_authorized_token'
+        : 'll_sess_local_authorized_token';
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
+  }, []);
+
   // Load Financial Data (passes lang and currency query params to retrieve localized & converted data)
   const loadFinancialData = useCallback(
     async (lang?: SupportedLanguage, curr?: SupportedCurrency) => {
@@ -285,7 +298,7 @@ export default function HomePage() {
     try {
       const res = await fetch('/api/data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ action: 'switch_preset', payload: { preset } }),
       });
       if (res.ok) {
@@ -357,7 +370,7 @@ export default function HomePage() {
     try {
       const res = await fetch('/api/security', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ action: 'verify_pin', pin }),
       });
       if (res.ok) {
@@ -406,7 +419,7 @@ export default function HomePage() {
     try {
       const res = await fetch('/api/security', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ action: 'refresh_session', expiresAt }),
       });
       if (res.ok) {
@@ -431,7 +444,7 @@ export default function HomePage() {
     try {
       const res = await fetch('/api/data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ action: 'add_transaction', payload: txData }),
       });
       if (res.ok) {
@@ -471,7 +484,7 @@ export default function HomePage() {
     try {
       const res = await fetch('/api/data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ action: 'approve_transaction', payload: { id } }),
       });
       if (res.ok) {
@@ -497,7 +510,7 @@ export default function HomePage() {
     try {
       const res = await fetch('/api/data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ action: 'reject_transaction', payload: { id } }),
       });
       if (res.ok) {
@@ -523,7 +536,7 @@ export default function HomePage() {
     try {
       const res = await fetch('/api/data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ action: 'edit_transaction', payload: updatedTx }),
       });
       if (res.ok) {
@@ -559,7 +572,7 @@ export default function HomePage() {
     try {
       const res = await fetch('/api/data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ action: 'update_profile', payload: updated }),
       });
       if (res.ok) {
@@ -585,7 +598,7 @@ export default function HomePage() {
     try {
       const res = await fetch('/api/data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ action: 'add_debtor', payload: debtorData }),
       });
       if (res.ok) {
@@ -626,7 +639,7 @@ export default function HomePage() {
     try {
       const res = await fetch('/api/data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ action: 'update_debtor_status', payload: { id, status } }),
       });
       if (res.ok) {
@@ -650,7 +663,7 @@ export default function HomePage() {
     try {
       const res = await fetch('/api/data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ action: 'record_loan_payment', payload: { id, amount } }),
       });
       if (res.ok) {

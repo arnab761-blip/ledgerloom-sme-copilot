@@ -719,7 +719,7 @@ ${loanDetailsHi}
   }
 
   /**
-   * LLM Tool Calling execution via Google Gemini SDK
+   * LLM Tool Calling execution via Google Gemini SDK with real function declarations
    */
   private static async callGeminiWithTools(
     query: string,
@@ -727,7 +727,7 @@ ${loanDetailsHi}
     lang: SupportedLanguage,
     currency: SupportedCurrency = 'BDT'
   ): Promise<AgentResponse> {
-    const { GoogleGenAI } = await import('@google/genai');
+    const { GoogleGenAI, Type } = await import('@google/genai');
     const ai = new GoogleGenAI({ apiKey });
 
     const rawProfile = ExcelDatabase.getProfile();
@@ -755,33 +755,195 @@ ${loanDetailsHi}
     const systemInstruction = `You are LedgerLoom CFO Copilot, a professional AI Financial Participant for SME business owners.
 The business is: ${profile.businessName} (${profile.industry}).
 Core Rules:
-1. NEVER calculate large arithmetic, loan reconciliations, or break-even targets via token generation. ALWAYS rely on deterministic financial formulas.
-2. Respond STRICTLY in ${langName}. Do NOT provide bilingual English + Bengali in the same message. If the user writes in Bengali or Banglish, reply exclusively in natural, warm, friendly Bengali. If the user writes in English, reply exclusively in English. Be conversational, approachable, and empathetic to the business owner.
+1. NEVER calculate large arithmetic, loan reconciliations, or break-even targets via token generation. ALWAYS invoke tools (calculateTargetProfit, getDebtorsSummary, reconcileLoanLiability, computeFinancialHealth) for financial arithmetic.
+2. Respond STRICTLY in ${langName}. If the user writes in Bengali or Banglish, reply exclusively in natural, warm, friendly Bengali. If the user writes in English, reply exclusively in English.
 3. Be action-oriented: mention exact units, fabric quantities, and financial warnings.
 Current Health:
 - Total Revenue: ${health.totalRevenue} ${profile.currency}
 - Total Expenses: ${health.totalExpenses} ${profile.currency}
 - Net Profit: ${health.netProfit} ${profile.currency}
 - Fixed Costs: ${health.totalFixedCosts} ${profile.currency}
-- Overdue Receivables (>threshold): ${health.highRiskReceivablesCount} accounts
+- Overdue Receivables: ${health.highRiskReceivablesCount} accounts
 - Active Debt: ${health.monthlyLoanObligation} monthly EMI
 `;
+
+    const tools: any = [
+      {
+        functionDeclarations: [
+          {
+            name: 'calculateTargetProfit',
+            description: 'Calculates the exact production units, fabric meters, variable costs, and target revenue needed to achieve a specified monthly net profit goal.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                targetProfit: {
+                  type: Type.NUMBER,
+                  description: 'The desired target net profit amount in active currency.',
+                },
+              },
+              required: ['targetProfit'],
+            },
+          },
+          {
+            name: 'getDebtorsSummary',
+            description: 'Retrieves all customer receivables and identifies overdue accounts exceeding credit risk thresholds.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                threshold: {
+                  type: Type.NUMBER,
+                  description: 'Minimum overdue amount threshold to filter.',
+                },
+              },
+            },
+          },
+          {
+            name: 'reconcileLoanLiability',
+            description: 'Performs deterministic loan amortization and calculates monthly EMI and interest schedule.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                principal: {
+                  type: Type.NUMBER,
+                  description: 'Loan principal amount in BDT.',
+                },
+                annualInterestRate: {
+                  type: Type.NUMBER,
+                  description: 'Annual interest rate percentage, e.g. 9.0',
+                },
+                tenureMonths: {
+                  type: Type.NUMBER,
+                  description: 'Repayment period in months.',
+                },
+              },
+              required: ['principal'],
+            },
+          },
+          {
+            name: 'computeFinancialHealth',
+            description: 'Computes total revenue, fixed overheads, variable costs, net margin, and break-even revenue.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {},
+            },
+          },
+        ],
+      },
+    ];
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: query,
       config: {
         systemInstruction,
-        temperature: 0.2,
+        temperature: 0.1,
+        tools,
       },
     });
+
+    // Check for tool calling / function calls returned by Gemini
+    if (response.functionCalls && response.functionCalls.length > 0) {
+      const call = response.functionCalls[0];
+      const args: any = call.args || {};
+
+      if (call.name === 'calculateTargetProfit') {
+        const targetAmt = Number(args.targetProfit) || 50000;
+        const plan = AccountingEngine.solveTargetProfit(profile, targetAmt, 'month', lang);
+        const ansBn = `🎯 **লক্ষ্যলাভ পরিকল্পনা (${targetAmt.toLocaleString()} ${profile.currency}):**\n` +
+          `- প্রয়োজনীয় উৎপাদন: **${plan.requiredUnits.toLocaleString()}টি** ${profile.primaryProduct}\n` +
+          `- কাঁচামাল/কাপড় প্রয়োজন: **${plan.requiredFabricMeters.toLocaleString()} মিটার**\n` +
+          `- মোট কাঁচামাল বাজেট: **${plan.requiredFabricCost.toLocaleString()} ${profile.currency}**\n` +
+          `- লক্ষ্য বিক্রয় আয়: **${plan.requiredRevenue.toLocaleString()} ${profile.currency}**\n` +
+          `- ব্রেক-ইভেন পয়েন্ট: **${plan.breakEvenUnits.toLocaleString()}টি** ইউনিট`;
+        const ansEn = `🎯 **Target Profit Execution Plan (${targetAmt.toLocaleString()} ${profile.currency}):**\n` +
+          `- Required Production: **${plan.requiredUnits.toLocaleString()} units** of ${profile.primaryProduct}\n` +
+          `- Fabric Required: **${plan.requiredFabricMeters.toLocaleString()} meters**\n` +
+          `- Raw Material Budget: **${plan.requiredFabricCost.toLocaleString()} ${profile.currency}**\n` +
+          `- Target Revenue: **${plan.requiredRevenue.toLocaleString()} ${profile.currency}**\n` +
+          `- Break-even Point: **${plan.breakEvenUnits.toLocaleString()} units**`;
+        return {
+          answerPrimary: lang === 'bn' ? ansBn : ansEn,
+          answerBengali: ansBn,
+          answerEnglish: ansEn,
+          executedTool: 'calculateTargetProfit',
+          toolOutput: plan,
+          metricsSnapshot: health,
+          suggestedAction: {
+            type: 'open_goal_modal',
+            label: 'প্ল্যানার ওপেন করুন',
+            labelEnglish: 'Open Goal Planner',
+          },
+        };
+      }
+
+      if (call.name === 'getDebtorsSummary') {
+        const threshold = Number(args.threshold) || getOverdueThreshold(currency);
+        const highRisk = debtors.filter((d) => d.type === 'receivable' && d.amount >= threshold);
+        const totalSum = highRisk.reduce((s, d) => s + d.amount, 0);
+        const ansBn = `⚠️ **বকেয়া রিসিভেবল সারসংক্ষেপ:**\n` +
+          `- মোট ঝুঁকিপূর্ণ ক্লায়েন্ট: **${highRisk.length}টি** (সীমা: >${threshold.toLocaleString()} ${currency})\n` +
+          `- সর্বমোট আটকে থাকা টাকা: **${totalSum.toLocaleString()} ${currency}**\n` +
+          `তালিকায় প্রধান: ${highRisk.map((d) => `${d.partyName} (${d.amount.toLocaleString()} ${currency})`).join(', ')}`;
+        const ansEn = `⚠️ **Debtors Risk Overview:**\n` +
+          `- High-risk accounts: **${highRisk.length}** (threshold: >${threshold.toLocaleString()} ${currency})\n` +
+          `- Total Overdue: **${totalSum.toLocaleString()} ${currency}**\n` +
+          `Key accounts: ${highRisk.map((d) => `${d.partyName} (${d.amount.toLocaleString()} ${currency})`).join(', ')}`;
+        return {
+          answerPrimary: lang === 'bn' ? ansBn : ansEn,
+          answerBengali: ansBn,
+          answerEnglish: ansEn,
+          executedTool: 'getDebtorsSummary',
+          toolOutput: highRisk,
+          metricsSnapshot: health,
+          suggestedAction: {
+            type: 'show_debtors',
+            label: 'বকেয়া তালিকা দেখুন',
+            labelEnglish: 'View Debtors',
+          },
+        };
+      }
+
+      if (call.name === 'reconcileLoanLiability') {
+        const principal = Number(args.principal) || 200000;
+        const rate = Number(args.annualInterestRate) || 9.0;
+        const tenure = Number(args.tenureMonths) || 12;
+        const amort = AccountingEngine.calculateLoanEMI(principal, rate, tenure);
+        const ansBn = `🏦 **ঋণ ও কিস্তি বিশ্লেষণ (${principal.toLocaleString()} ${currency}):**\n` +
+          `- সুদের হার: **${rate}% বার্ষিক**\n` +
+          `- পরিশোধের মেয়াদ: **${tenure} মাস**\n` +
+          `- প্রতি মাসের কিস্তি (EMI): **${amort.monthlyEMI.toLocaleString()} ${currency}**\n` +
+          `- মোট পরিশোধযোগ্য সুদ: **${amort.totalInterest.toLocaleString()} ${currency}**`;
+        const ansEn = `🏦 **Loan Amortization Calculation (${principal.toLocaleString()} ${currency}):**\n` +
+          `- Interest Rate: **${rate}% p.a.**\n` +
+          `- Repayment Tenure: **${tenure} months**\n` +
+          `- Monthly EMI: **${amort.monthlyEMI.toLocaleString()} ${currency}**\n` +
+          `- Total Interest: **${amort.totalInterest.toLocaleString()} ${currency}**`;
+        return {
+          answerPrimary: lang === 'bn' ? ansBn : ansEn,
+          answerBengali: ansBn,
+          answerEnglish: ansEn,
+          executedTool: 'reconcileLoanLiability',
+          toolOutput: amort,
+          metricsSnapshot: health,
+          suggestedAction: {
+            type: 'reconcile_loan',
+            label: 'লোন বিবরণী দেখুন',
+            labelEnglish: 'View Loan Reconciliation',
+          },
+        };
+      }
+
+      if (call.name === 'computeFinancialHealth') {
+        return this.deterministicRoute('health', profile, transactions, debtors, loans, health, lang, currency);
+      }
+    }
 
     const text = response.text || '';
     return {
       answerPrimary: text,
       answerBengali: text,
       answerEnglish: text,
-      executedTool: 'gemini-orchestrator',
+      executedTool: 'gemini-conversational',
       metricsSnapshot: health,
     };
   }

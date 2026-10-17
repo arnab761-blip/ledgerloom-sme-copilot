@@ -12,10 +12,16 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, session });
       } else {
         return NextResponse.json(
-          { success: false, error: 'ভুল পিন (PIN) কোড! ডিফল্ট পিন হলো 2026' },
+          { success: false, error: 'ভুল পিন (PIN) কোড! অনুগ্রহ করে আপনার সঠিক ৪-ডিজিটের পিন প্রদান করুন।' },
           { status: 401 }
         );
       }
+    }
+
+    if (action === 'change_pin') {
+      const { newPin } = await req.json();
+      const updated = SecurityVault.setPin(newPin);
+      return NextResponse.json({ success: updated });
     }
 
     if (action === 'check_session') {

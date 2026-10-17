@@ -544,42 +544,45 @@ export class AccountingEngine {
       });
     }
 
-    // Alert 2: Utility Bill / Expense Spike Anomaly (+35% spike alert)
-    const utilityTx = transactions.find((t) => t.category === 'utility');
-    const baselineUtilityBDT = profile.electricityBillMonthly || 18000;
-    const currentUtilityBDT = utilityTx ? utilityTx.amount : baselineUtilityBDT * 1.35;
+    // Alert 2: Utility Bill / Expense Spike Anomaly (Dynamic % spike alert)
+    const utilityTxs = transactions.filter((t) => t.category === 'utility' && t.status === 'approved');
+    const totalUtilityThisMonth = utilityTxs.reduce((sum, t) => sum + t.amount, 0);
+    const baselineUtilityBDT = profile.electricityBillMonthly || 22000;
+    const currentUtilityBDT = totalUtilityThisMonth > 0 ? totalUtilityThisMonth : baselineUtilityBDT;
     const spikePct = Math.round(((currentUtilityBDT - baselineUtilityBDT) / baselineUtilityBDT) * 100);
 
     const baselineUtility = convertCurrency(baselineUtilityBDT, 'BDT', activeCurrency);
     const currentUtility = convertCurrency(currentUtilityBDT, 'BDT', activeCurrency);
 
-    alerts.push({
-      id: 'ANOM-02',
-      type: 'expense_spike',
-      severity: 'warning',
-      title: isZh
-        ? '本月水电公用开支较上月异常激增 35%'
-        : isBn
-        ? 'গত মাসের তুলনায় এ মাসে ইউটিলিটি খরচ ৩৫% বেশি হয়েছে'
-        : isHi
-        ? 'पिछले महीने की तुलना में इस महीने उपयोगिता खर्च में 35% की वृद्धि'
-        : 'Utility & Electricity Cost Increased by 35% Compared to Last Month',
-      description: isZh
-        ? `本月电力与公用开支（${currentUtility.toLocaleString()} ${activeCurrency}）较日常基准均值（${baselineUtility.toLocaleString()} ${activeCurrency}）超出约 ${Math.max(35, spikePct)}%。`
-        : isBn
-        ? `চলতি মাসে বিদ্যুৎ ও ইউটিলিটি খরচ (${currentUtility.toLocaleString()} ${activeCurrency}) বিগত স্বাভাবিক গড় (${baselineUtility.toLocaleString()} ${activeCurrency}) এর তুলনায় প্রায় ${Math.max(35, spikePct)}% বেশি রেকর্ড হয়েছে।`
-        : isHi
-        ? `इस महीने का बिजली खर्च (${currentUtility.toLocaleString()} ${activeCurrency}) सामान्य औसत (${baselineUtility.toLocaleString()} ${activeCurrency}) से लगभग ${Math.max(35, spikePct)}% अधिक दर्ज हुआ है।`
-        : `This month's electricity and utility expense (${currentUtility.toLocaleString()} ${activeCurrency}) is ~${Math.max(35, spikePct)}% higher than the baseline average (${baselineUtility.toLocaleString()} ${activeCurrency}).`,
-      recommendedAction: isZh
-        ? '建议将重型设备与空调运转调整至谷电时段，排查非生产性待机能耗。'
-        : isBn
-        ? 'অফ-পিক আওয়ারে ভারী মেশিনারি ও এয়ার কন্ডিশনিং শিডিউল পুনর্নির্ধারণ করে বিদ্যুৎ অপচয় রোধ করুন।'
-        : isHi
-        ? 'भारी मशीनों का संचालन गैर-पीक घंटों में करें और बिजली की बर्बादी रोकें।'
-        : 'Reschedule heavy machinery/air-conditioning to off-peak hours and eliminate idle standby power consumption.',
-      projectedDate: isZh ? '当月 (2026年10月)' : isBn ? 'চলতি মাস (অক্টোবর ২০২৬)' : isHi ? 'अक्टूबर 2026' : 'Current Month (October 2026)',
-    });
+    if (spikePct > 10) {
+      alerts.push({
+        id: 'ANOM-02',
+        type: 'expense_spike',
+        severity: 'warning',
+        title: isZh
+          ? `本月水电公用开支较基准激增 ${spikePct}%`
+          : isBn
+          ? `গত মাসের স্বাভাবিক গড়ের তুলনায় এ মাসে ইউটিলিটি খরচ ${spikePct}% বেশি হয়েছে`
+          : isHi
+          ? `सामान्य औसत की तुलना में इस महीने बिजली खर्च में ${spikePct}% की वृद्धि`
+          : `Utility & Electricity Cost Increased by ${spikePct}% Compared to Baseline`,
+        description: isZh
+          ? `本月电力与公用开支（${currentUtility.toLocaleString()} ${activeCurrency}）较日常基准均值（${baselineUtility.toLocaleString()} ${activeCurrency}）超出约 ${spikePct}%。`
+          : isBn
+          ? `চলতি মাসে বিদ্যুৎ ও ইউটিলিটি খরচ (${currentUtility.toLocaleString()} ${activeCurrency}) বিগত স্বাভাবিক গড় (${baselineUtility.toLocaleString()} ${activeCurrency}) এর তুলনায় প্রায় ${spikePct}% বেশি রেকর্ড হয়েছে।`
+          : isHi
+          ? `इस महीने का बिजली खर्च (${currentUtility.toLocaleString()} ${activeCurrency}) सामान्य औसत (${baselineUtility.toLocaleString()} ${activeCurrency}) से लगभग ${spikePct}% अधिक दर्ज हुआ है।`
+          : `This month's electricity and utility expense (${currentUtility.toLocaleString()} ${activeCurrency}) is ~${spikePct}% higher than the baseline average (${baselineUtility.toLocaleString()} ${activeCurrency}).`,
+        recommendedAction: isZh
+          ? '建议将重型设备与空调运转调整至谷电时段，排查非生产性待机能耗。'
+          : isBn
+          ? 'অফ-পিক আওয়ারে ভারী মেশিনারি ও এয়ার কন্ডিশনিং শিডিউল পুনর্নির্ধারণ করে বিদ্যুৎ অপচয় রোধ করুন।'
+          : isHi
+          ? 'भारी मशीनों का संचालन गैर-पीक घंटों में करें और बिजली की बर्बादी रोकें।'
+          : 'Reschedule heavy machinery/air-conditioning to off-peak hours and eliminate idle standby power consumption.',
+        projectedDate: isZh ? '当月 (2026年10月)' : isBn ? 'চলতি মাস (অক্টোবর ২০২৬)' : isHi ? 'अक्टूबर 2026' : 'Current Month (October 2026)',
+      });
+    }
 
     // Alert 3: Overdue Receivables Exceeding Threshold
     const alertThreshold = getOverdueThreshold(activeCurrency);
@@ -748,6 +751,144 @@ export class AccountingEngine {
         recommendation: isZh ? '❌ 处于负毛利亏损！库存出清后应立即停止该SKU裁切与缝制。' : isBn ? '❌ লোকসানে বিক্রি হচ্ছে! স্টক ক্লিয়ারেন্স শেষ করে অবিলম্বে এই আইটেমের উৎপাদন বন্ধ করুন।' : isHi ? '❌ घाटे में बिक्री! स्टॉक निकासी के बाद उत्पादन बंद करें।' : '❌ Selling at a loss! Liquidate remaining stock and discontinue production.',
       },
     ];
+  }
+
+  /**
+   * Deterministic SME Digital Credit Health Scorer (CIB / Underwriting Model)
+   * Grounded in actual financial statements, DSCR, cash runway, and overdue ratios.
+   */
+  public static computeCreditHealthScore(
+    metrics: FinancialHealthMetrics,
+    debtors: DebtorRecord[] = [],
+    loans: LoanLiability[] = [],
+    cashOnHand?: number
+  ): {
+    score: number;
+    grade: 'A+' | 'A' | 'B' | 'C' | 'D';
+    dscr: number;
+    cashRunwayMonths: number;
+    overdueRatio: number;
+    ratingText: string;
+  } {
+    let score = 550; // Neutral baseline
+
+    // 1. Profitability (up to +120 or -80)
+    const margin = metrics.netMarginPercentage;
+    if (metrics.netProfit > 0) {
+      if (margin >= 20) score += 120;
+      else if (margin >= 10) score += 90;
+      else score += 50;
+    } else {
+      score -= 80;
+    }
+
+    // 2. Debt Service Coverage Ratio (DSCR = Operating Revenue / Monthly Debt)
+    const monthlyDebt = Math.max(1, metrics.monthlyLoanObligation);
+    const dscr = Math.round((metrics.totalRevenue / monthlyDebt) * 10) / 10;
+    if (dscr >= 5.0) score += 90;
+    else if (dscr >= 2.0) score += 60;
+    else if (dscr >= 1.0) score += 20;
+    else score -= 70;
+
+    // 3. Working Capital & Cash Runway
+    const cash = cashOnHand !== undefined ? cashOnHand : Math.max(15000, metrics.netProfit);
+    const monthlyBurn = Math.max(1000, metrics.totalFixedCosts);
+    const runway = Math.round((cash / monthlyBurn) * 10) / 10;
+    if (runway >= 2.0) score += 70;
+    else if (runway >= 1.0) score += 40;
+    else score -= 50;
+
+    // 4. Receivables Overdue Factor
+    const totalRec = Math.max(1, metrics.totalReceivables);
+    const highRiskSum = debtors
+      .filter((d) => d.type === 'receivable' && d.amount >= (d.alertThreshold || 30000))
+      .reduce((s, d) => s + d.amount, 0);
+    const overdueRatio = Math.round((highRiskSum / totalRec) * 100);
+    if (overdueRatio < 15) score += 45;
+    else if (overdueRatio > 40) score -= 60;
+
+    // Clamp score to standard 300 - 850 range
+    const finalScore = Math.max(350, Math.min(850, score));
+
+    let grade: 'A+' | 'A' | 'B' | 'C' | 'D' = 'C';
+    let ratingText = 'Fair';
+    if (finalScore >= 750) {
+      grade = 'A+';
+      ratingText = 'Excellent';
+    } else if (finalScore >= 700) {
+      grade = 'A';
+      ratingText = 'Very Good';
+    } else if (finalScore >= 640) {
+      grade = 'B';
+      ratingText = 'Good';
+    } else if (finalScore >= 580) {
+      grade = 'C';
+      ratingText = 'Fair';
+    } else {
+      grade = 'D';
+      ratingText = 'High Risk';
+    }
+
+    return {
+      score: finalScore,
+      grade,
+      dscr,
+      cashRunwayMonths: runway,
+      overdueRatio,
+      ratingText,
+    };
+  }
+
+  /**
+   * Deterministic 30/60 Days Dynamic Cash Flow Projection
+   * Computes trajectory from actual historical daily run-rate, known debtor due dates, and fixed burn rate.
+   */
+  public static generateDynamicCashFlowForecast(
+    initialCash: number,
+    dailyRevenueAvg: number,
+    monthlyFixedCost: number,
+    debtors: DebtorRecord[] = [],
+    loans: LoanLiability[] = [],
+    days: 30 | 60 = 30
+  ): Array<{ day: string; inflow: number; outflow: number; balance: number }> {
+    const dailyFixedBurn = monthlyFixedCost / 30;
+    const dailyVariableBurn = dailyRevenueAvg * 0.5; // based on unit contribution margin
+    const milestoneDays = days === 30 ? [1, 5, 10, 15, 20, 25, 30] : [1, 10, 20, 30, 40, 50, 60];
+
+    let runningBalance = initialCash;
+    let prevDay = 0;
+    const result: Array<{ day: string; inflow: number; outflow: number; balance: number }> = [];
+
+    for (const d of milestoneDays) {
+      const daySpan = d - prevDay;
+      let dayInflow = Math.round(dailyRevenueAvg * daySpan);
+      let dayOutflow = Math.round((dailyFixedBurn + dailyVariableBurn) * daySpan);
+
+      // Add scheduled debtor collections around Day 10 and Day 25
+      if ((d === 10 || d === 15) && debtors.length > 0) {
+        const recoverable = debtors.filter((x) => x.type === 'receivable').reduce((s, x) => s + x.amount, 0);
+        dayInflow += Math.round(recoverable * 0.35); // collection velocity
+      }
+
+      // Add scheduled loan EMI deduction on Day 20 or Day 50
+      if (d === 20 || d === 50) {
+        const monthlyEMI = loans.reduce((s, l) => s + l.monthlyEMI, 0);
+        dayOutflow += monthlyEMI;
+      }
+
+      runningBalance = runningBalance + dayInflow - dayOutflow;
+      prevDay = d;
+
+      const label = d === 20 ? `Day ${d} (Payable/Due)` : `Day ${d}`;
+      result.push({
+        day: label,
+        inflow: dayInflow,
+        outflow: dayOutflow,
+        balance: Math.round(runningBalance),
+      });
+    }
+
+    return result;
   }
 }
 

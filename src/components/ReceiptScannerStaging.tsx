@@ -384,123 +384,138 @@ export const ReceiptScannerStaging: React.FC<StagingProps> = ({
     setScanning(true);
     setCapturedImage(dataUrl);
 
-    setTimeout(async () => {
-      const amounts = [3500, 5200, 8400, 11600, 14500, 9300, 6200, 17800];
-      const randomAmount = amounts[Math.floor(Math.random() * amounts.length)];
+    const storedApiKey =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('ledgerloom_gemini_api_key') || ''
+        : '';
 
-      const vendorPool =
-        currentLanguage === 'zh'
-          ? [
-              {
-                party: '宏发五金机电商行',
-                desc: '小票拍照: 裁床电机驱动皮带及轴承更换维修',
-                cat: 'maintenance',
-                costType: 'fixed' as const,
-              },
-              {
-                party: '达卡纺织面料直销中心',
-                desc: '采购收据: 80支高密双面纯棉针织布料批次',
-                cat: 'raw_material',
-                costType: 'variable' as const,
-              },
-              {
-                party: '顺达辅料拉链商行',
-                desc: '现金小票: 订制金属防水拉链与铜质四合扣',
-                cat: 'raw_material',
-                costType: 'variable' as const,
-              },
-            ]
-          : currentLanguage === 'hi'
-          ? [
-              {
-                party: 'नवाबपुर मेटल स्टोर्स',
-                desc: 'कैश मेमो: सिलाई मशीन मोटर व ड्राइव बेल्ट मरम्मत',
-                cat: 'maintenance',
-                costType: 'fixed' as const,
-              },
-              {
-                party: 'करीम टेक्सटाइल्स ढाका',
-                desc: 'बिल: 50 गज कॉटन फैब्रिक व सिलाई धागे खरीद',
-                cat: 'raw_material',
-                costType: 'variable' as const,
-              },
-            ]
-          : currentLanguage === 'bn'
-          ? [
-              {
-                party: 'নবাবপুর মেটাল অ্যান্ড হার্ডওয়্যার স্টোর',
-                desc: 'ক্যাশ মেমো: সুইং মেশিন মোটর ড্রাইভ বেল্ট ও বিয়ারিং মেরামত',
-                cat: 'maintenance',
-                costType: 'fixed' as const,
-              },
-              {
-                party: 'মেসার্স নিউ ঢাকা টেক্সটাইল',
-                desc: 'ক্যাশ মেমো: রসিদ অনুযায়ী প্রিমিয়াম কটন ফেব্রিক ও কাপড় ক্রয়',
-                cat: 'raw_material',
-                costType: 'variable' as const,
-              },
-              {
-                party: 'সদরঘাট ট্রিমস অ্যান্ড বোতাম হাউজ',
-                desc: 'ক্যাশ ভাউচার: মেটাল বাটন ৫০০ ডজন ও স্পেসিয়াল জিপার',
-                cat: 'raw_material',
-                costType: 'variable' as const,
-              },
-              {
-                party: 'ইসলামপুর সুতা ও ফেব্রিক্স সাপ্লাই',
-                desc: 'মেমো: সুইং থ্রেড রোলস ও প্যাকেজিং ম্যাটেরিয়ালস',
-                cat: 'raw_material',
-                costType: 'variable' as const,
-              },
-            ]
-          : [
-              {
-                party: 'Nawabpur Hardware & Motor Works',
-                desc: 'Cash Memo: Industrial sewing machine drive belt & repair',
-                cat: 'maintenance',
-                costType: 'fixed' as const,
-              },
-              {
-                party: 'Dhaka Cotton & Textile Mills',
-                desc: 'Cash Receipt: Premium 100% cotton fabric rolls purchase',
-                cat: 'raw_material',
-                costType: 'variable' as const,
-              },
-              {
-                party: 'Prime Trims & Accessories Ltd',
-                desc: 'Invoice: Brass snaps 500 gross & reinforced zippers',
-                cat: 'raw_material',
-                costType: 'variable' as const,
-              },
-            ];
+    try {
+      // 1. Attempt real Gemini Vision OCR via API endpoint
+      const response = await fetch('/api/ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: dataUrl,
+          apiKey: storedApiKey,
+          fileName,
+        }),
+      });
 
-      const item = vendorPool[Math.floor(Math.random() * vendorPool.length)];
+      const resJson = await response.json().catch(() => null);
 
-      const newScannedTx = {
-        date: new Date().toISOString().split('T')[0],
-        type: 'expense' as const,
-        category: item.cat,
-        costType: item.costType,
-        amount: randomAmount,
-        description: item.desc,
-        partyName: item.party,
-        paymentMethod: 'cash' as const,
-        status: 'pending_approval' as const,
-        source: 'receipt_ocr' as const,
-        evidenceNote:
+      if (resJson && resJson.success && resJson.data) {
+        const d = resJson.data;
+        const newScannedTx = {
+          date: d.date || new Date().toISOString().split('T')[0],
+          type: 'expense' as const,
+          category: d.category || 'raw_material',
+          costType: d.costType || 'variable',
+          amount: Number(d.amount) || 5000,
+          description: d.description || `Scanned receipt from ${d.vendorName || 'Vendor'}`,
+          partyName: d.vendorName || 'Extracted Vendor',
+          paymentMethod: (d.paymentMethod || 'cash') as any,
+          status: 'pending_approval' as const,
+          source: 'receipt_ocr' as const,
+          evidenceNote:
+            currentLanguage === 'bn'
+              ? `📸 জেমিনি ২.৫ ফ্ল্যাশ ভিশন (Gemini 2.5 Flash Vision) ওসিআর দিয়ে ছবির মেমো থেকে স্বয়ংক্রিয়ভাবে এক্সট্রাক্ট করা হয়েছে।`
+              : `📸 Extracted by Gemini 2.5 Flash Vision Multimodal OCR (${fileName || 'Photo Memo'}).`,
+          receiptImage: dataUrl,
+        };
+
+        await onAddTransaction(newScannedTx);
+        setScanning(false);
+        setNotificationToast(
           currentLanguage === 'bn'
-            ? `📸 ক্যামেরা দিয়ে মেমোর ছবি স্ক্যানকৃত (${fileName || 'Photo Memo'})। এআই ওল্ট্রা-ভিশন দিয়ে এক্সট্রাক্ট করা হয়েছে।`
-            : `📸 Scanned receipt photo (${fileName || 'Photo Memo'}) processed by Multimodal Vision OCR.`,
-        receiptImage: dataUrl,
-      };
+            ? `✅ জেমিনি ভিশন ওসিআর সফল! ${conv(newScannedTx.amount).toLocaleString()} ${activeCurrency} (${newScannedTx.partyName}) অনুমোদন তালিকায় যুক্ত হয়েছে।`
+            : `✅ Gemini Vision OCR extracted ${conv(newScannedTx.amount).toLocaleString()} ${activeCurrency} from ${newScannedTx.partyName}!`
+        );
+        return;
+      }
+    } catch (apiErr) {
+      console.warn('Live Gemini Vision API error, falling back to deterministic template parser:', apiErr);
+    }
 
-      await onAddTransaction(newScannedTx);
-      setScanning(false);
-      setNotificationToast(
+    // 2. Deterministic Fallback when Gemini API key is not configured or in offline mode
+    const vendorPool =
+      currentLanguage === 'zh'
+        ? [
+            {
+              party: '宏发五金机电商行',
+              desc: '裁床电机驱动皮带及轴承更换维修 (离线模板提取)',
+              cat: 'maintenance',
+              costType: 'fixed' as const,
+              amount: 8500,
+            },
+            {
+              party: '达卡纺织面料直销中心',
+              desc: '80支高密双面纯棉针织布料批次 (离线模板提取)',
+              cat: 'raw_material',
+              costType: 'variable' as const,
+              amount: 14200,
+            },
+          ]
+        : currentLanguage === 'bn'
+        ? [
+            {
+              party: 'নবাবপুর মেটাল অ্যান্ড হার্ডওয়্যার স্টোর',
+              desc: 'সুইং মেশিন মোটর ড্রাইভ বেল্ট ও বিয়ারিং মেরামত (অফলাইন স্ক্যানার)',
+              cat: 'maintenance',
+              costType: 'fixed' as const,
+              amount: 8500,
+            },
+            {
+              party: 'মেসার্স নিউ ঢাকা টেক্সটাইল',
+              desc: 'কটন ফেব্রিক ও কাপড় ক্রয় (অফলাইন স্ক্যানার)',
+              cat: 'raw_material',
+              costType: 'variable' as const,
+              amount: 14200,
+            },
+          ]
+        : [
+            {
+              party: 'Nawabpur Hardware & Motor Works',
+              desc: 'Industrial sewing machine drive belt & repair (Offline Parser)',
+              cat: 'maintenance',
+              costType: 'fixed' as const,
+              amount: 8500,
+            },
+            {
+              party: 'Dhaka Cotton & Textile Mills',
+              desc: 'Premium cotton fabric purchase memo (Offline Parser)',
+              cat: 'raw_material',
+              costType: 'variable' as const,
+              amount: 14200,
+            },
+          ];
+
+    const item = vendorPool[0];
+
+    const fallbackTx = {
+      date: new Date().toISOString().split('T')[0],
+      type: 'expense' as const,
+      category: item.cat,
+      costType: item.costType,
+      amount: item.amount,
+      description: item.desc,
+      partyName: item.party,
+      paymentMethod: 'cash' as const,
+      status: 'pending_approval' as const,
+      source: 'receipt_ocr' as const,
+      evidenceNote:
         currentLanguage === 'bn'
-          ? `✅ মেমো স্ক্যান সম্পন্ন! ${conv(randomAmount).toLocaleString()} ${activeCurrency} টাকার ভাউচার পেন্ডিং টেবিলে জমা হয়েছে।`
-          : `✅ Receipt scan complete! ${conv(randomAmount).toLocaleString()} ${activeCurrency} memo queued in pending approvals below.`
-      );
-    }, 1500);
+          ? `📸 অফলাইন মেমো স্ক্যানার (লাইভ জেমিনি ভিশন ওসিআর সক্রিয় করতে সেটিংসে API Key দিন)।`
+          : `📸 Offline Document Scanner (Configure Gemini API Key in Copilot/Settings for live Gemini 2.5 Flash Vision OCR).`,
+      receiptImage: dataUrl,
+    };
+
+    await onAddTransaction(fallbackTx);
+    setScanning(false);
+    setNotificationToast(
+      currentLanguage === 'bn'
+        ? `📸 অফলাইন মেমো স্ক্যান সম্পন্ন! ${conv(fallbackTx.amount).toLocaleString()} ${activeCurrency} টাকা পেন্ডিং টেবিলে জমা হয়েছে।`
+        : `📸 Offline receipt queued: ${conv(fallbackTx.amount).toLocaleString()} ${activeCurrency} from ${fallbackTx.partyName}.`
+    );
   };
 
   const triggerDailyReminder = () => {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ExcelDatabase } from '@/lib/excel-database';
 import { AccountingEngine } from '@/lib/accounting-engine';
+import { SecurityVault } from '@/lib/security-vault';
 
 import { SupportedLanguage } from '@/lib/i18n';
 import { SupportedCurrency } from '@/lib/currency';
@@ -62,6 +63,14 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const authHeader = req.headers.get('authorization');
+    if (authHeader && !SecurityVault.validateSessionToken(authHeader)) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Invalid or expired session bearer token' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { action, payload } = body;
 

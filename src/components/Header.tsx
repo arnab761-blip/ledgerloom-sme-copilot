@@ -440,9 +440,6 @@ export const Header: React.FC<HeaderProps> = ({
                       : 'Unlock Vault'}
                   </span>
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                  PIN: 2026
-                </span>
               </button>
             </div>
           </motion.div>

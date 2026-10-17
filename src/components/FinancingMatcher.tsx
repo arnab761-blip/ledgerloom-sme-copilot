@@ -21,6 +21,7 @@ import {
   FinancialHealthMetrics,
   DebtorRecord,
 } from '@/lib/types';
+import { AccountingEngine } from '@/lib/accounting-engine';
 import { SupportedLanguage, getTranslation } from '@/lib/i18n';
 import { SupportedCurrency } from '@/lib/currency';
 
@@ -54,6 +55,10 @@ export const FinancingMatcher: React.FC<FinancingProps> = ({
   );
   const [applying, setApplying] = useState(false);
   const [appliedSuccess, setAppliedSuccess] = useState<string | null>(null);
+
+  const creditHealth = React.useMemo(() => {
+    return AccountingEngine.computeCreditHealthScore(health, debtors);
+  }, [health, debtors]);
 
   const handleApplySandbox = (option: FinancingOption) => {
     if (!isUnlocked) {
@@ -102,14 +107,14 @@ export const FinancingMatcher: React.FC<FinancingProps> = ({
               {t('creditHealthTitle')}
             </div>
             <div className="text-2xl font-black text-emerald-400">
-              {health.netProfit > 0 ? `785 (${t('excellentScore')})` : `640 (${t('fairScore')})`}
+              {creditHealth.score} ({creditHealth.grade === 'A+' ? t('excellentScore') : creditHealth.ratingText})
             </div>
             <div className="text-[10px] text-slate-300">
-              DSCR: {(health.totalRevenue / Math.max(1, health.monthlyLoanObligation)).toFixed(1)}x
+              DSCR: {creditHealth.dscr}x • Runway: {creditHealth.cashRunwayMonths}m
             </div>
           </div>
           <div className="w-12 h-12 rounded-full border-4 border-emerald-400 flex items-center justify-center font-black text-xs text-white">
-            A+
+            {creditHealth.grade}
           </div>
         </div>
       </div>

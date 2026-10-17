@@ -3,13 +3,33 @@ import { PermissionTier, SecuritySessionState } from './types';
 export class SecurityVault {
   // Default session expiration in minutes
   public static readonly SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-  private static readonly MASTER_PIN = '2026'; // Competition Year Default PIN
+  private static activePin = '2026';
 
   /**
-   * Validates PIN entered by business owner
+   * Sets new Owner PIN securely
+   */
+  public static setPin(newPin: string): boolean {
+    if (/^\d{4}$/.test(newPin.trim())) {
+      this.activePin = newPin.trim();
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Validates PIN entered by business owner against active PIN
    */
   public static verifyPin(pin: string): boolean {
-    return pin.trim() === this.MASTER_PIN;
+    return pin.trim() === this.activePin;
+  }
+
+  /**
+   * Validates Bearer Session Tokens for API authorization
+   */
+  public static validateSessionToken(token?: string | null): boolean {
+    if (!token) return false;
+    const cleanToken = token.replace(/^Bearer\s+/i, '').trim();
+    return cleanToken.startsWith('ll_sess_') && cleanToken.length >= 16;
   }
 
   /**

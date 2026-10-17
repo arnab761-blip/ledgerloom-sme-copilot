@@ -197,30 +197,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Cash on hand (calculated deterministically: initial capital + net profit - unpaid receivables)
   const cashBalance = Math.max(15000, profile.initialInvestment + activeMetrics.netProfit - activeMetrics.totalReceivables);
 
-  // 30-day forecast curve (converted dynamically to active currency)
-  const cashFlowForecast30 = [
-    { day: 'Day 1', inflow: conv(45000), outflow: conv(20000), balance: conv(125000) },
-    { day: 'Day 5', inflow: conv(60000), outflow: conv(35000), balance: conv(150000) },
-    { day: 'Day 10', inflow: conv(30000), outflow: conv(85000), balance: conv(95000) },
-    { day: 'Day 15', inflow: conv(80000), outflow: conv(25000), balance: conv(150000) },
-    { day: 'Day 20 (Payable/Due)', inflow: conv(20000), outflow: conv(145000), balance: conv(25000) },
-    { day: 'Day 25', inflow: conv(95000), outflow: conv(30000), balance: conv(90000) },
-    { day: 'Day 30', inflow: conv(50000), outflow: conv(20000), balance: conv(120000) },
-  ];
+  // Dynamic 30-day and 60-day cash flow forecast calculated from actual transaction run-rates, debtors, and overheads
+  const activeForecast = React.useMemo(() => {
+    const dailyRevAvg = Math.max(2000, activeMetrics.totalRevenue / 30);
+    const rawForecast = AccountingEngine.generateDynamicCashFlowForecast(
+      cashBalance,
+      dailyRevAvg,
+      activeMetrics.totalFixedCosts,
+      debtors,
+      loans,
+      forecastDays
+    );
+    return rawForecast.map((pt) => ({
+      ...pt,
+      inflow: conv(pt.inflow),
+      outflow: conv(pt.outflow),
+      balance: conv(pt.balance),
+    }));
+  }, [cashBalance, activeMetrics, debtors, loans, forecastDays, activeCurrency]);
 
-  // 60-day forecast curve (Past 3-6 months pattern projection)
-  const cashFlowForecast60 = [
-    { day: 'Day 1', inflow: conv(45000), outflow: conv(20000), balance: conv(125000) },
-    { day: 'Day 10', inflow: conv(75000), outflow: conv(55000), balance: conv(145000) },
-    { day: 'Day 20 (Month 1 Due)', inflow: conv(30000), outflow: conv(140000), balance: conv(35000) },
-    { day: 'Day 30', inflow: conv(95000), outflow: conv(35000), balance: conv(95000) },
-    { day: 'Day 40', inflow: conv(65000), outflow: conv(40000), balance: conv(120000) },
-    { day: 'Day 50 (Month 2 Due)', inflow: conv(40000), outflow: conv(135000), balance: conv(25000) },
-    { day: 'Day 60', inflow: conv(110000), outflow: conv(45000), balance: conv(150000) },
-  ];
-
-  const activeForecast = forecastDays === 30 ? cashFlowForecast30 : cashFlowForecast60;
-  const finalProjectedBalance = activeForecast[activeForecast.length - 1].balance;
+  const finalProjectedBalance = activeForecast[activeForecast.length - 1]?.balance || 0;
   const isSurplus = finalProjectedBalance >= 0;
 
   const costBreakdownData = [
