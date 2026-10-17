@@ -134,7 +134,7 @@ export const FinancingMatcher: React.FC<FinancingProps> = ({
                   {currentLanguage === 'bn' ? '২৪ তারিখে ৳৩০,০০০ নগদ ঘাটতি পূর্বাভাস' : 'Deficit Alert: 30,000 BDT on the 24th'}
                 </span>
                 <span className="text-[10px] font-bold text-slate-500">
-                  {currentLanguage === 'bn' ? 'রফিক ভাইয়ের কাল্পনিক দৃশ্যপট' : "Rafiq Bhai's Scenario"}
+                  {currentLanguage === 'bn' ? 'Owner-এর কাল্পনিক দৃশ্যপট' : "Owner's Scenario"}
                 </span>
               </div>
               <h3 className="text-base font-bold text-slate-900 mt-0.5">

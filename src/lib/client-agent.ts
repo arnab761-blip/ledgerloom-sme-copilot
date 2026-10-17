@@ -139,10 +139,12 @@ export class ClientAgent {
     }
 
     // =========================================================================
-    // 2. CONVERSATIONAL "AMI" / "AMI RAFIQ" / "AMI KI KORBO"
+    // 2. CONVERSATIONAL "AMI" / "AMI OWNER" / "AMI KI KORBO"
     // =========================================================================
     const isAmi =
       q === 'ami' ||
+      q.includes('ami owner') ||
+      q.includes('ami malik') ||
       q.includes('ami rafiq') ||
       q.includes('ami ki korbo') ||
       q.includes('amar ki kora');

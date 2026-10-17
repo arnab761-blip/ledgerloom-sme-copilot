@@ -29,7 +29,7 @@ interface WalkthroughProps {
   currentCurrency?: SupportedCurrency;
 }
 
-export const RafiqBhaiWalkthroughModal: React.FC<WalkthroughProps> = ({
+export const OwnerWalkthroughModal: React.FC<WalkthroughProps> = ({
   isOpen,
   onClose,
   onNavigateTab,
@@ -45,9 +45,9 @@ export const RafiqBhaiWalkthroughModal: React.FC<WalkthroughProps> = ({
       titleEn: '1. 08:00 AM Autonomous Reminder',
       titleZh: '1. 早上 08:00 自动记账提醒',
       descBn:
-        'এজেন্ট স্বয়ংক্রিয়ভাবে রফিক ভাইকে রিমাইন্ডার পাঠায়: "শুভ সকাল রফিক ভাই! গতকালের কাঁচামাল ক্রয় বা বিক্রির হিসাব কি লিখেছেন?"',
+        'এজেন্ট স্বয়ংক্রিয়ভাবে Owner-কে রিমাইন্ডার পাঠায়: "শুভ সকাল! গতকালের কাঁচামাল ক্রয় বা বিক্রির হিসাব কি লিখেছেন?"',
       descEn:
-        'The agent automatically triggers a morning reminder: "Good morning Rafiq Bhai! Did you record yesterday’s fabric purchase and cash sales?"',
+        'The agent automatically triggers a morning reminder: "Good morning Owner! Did you record yesterday’s fabric purchase and cash sales?"',
       descZh:
         'AI 副驾在早晨自动推送消息：“厂长早！昨天的面料采购和车间销售流水记下了吗？”',
       actionLabelBn: 'নোটিফিকেশন প্যানেলে যান',
@@ -63,9 +63,9 @@ export const RafiqBhaiWalkthroughModal: React.FC<WalkthroughProps> = ({
       titleEn: '2. Conversational Entry to Pending Draft',
       titleZh: '2. 口述语音转化为待审草案',
       descBn:
-        'রফিক ভাই লিখলেন: "৫০ গজ কাপড় কিনলাম ২৫,০০০ টাকায়, ১০,০০০ টাকা বাকি রইলো।" সহকারী কোনো প্রশ্ন না করে হিসাব উল্টে সাজালো এবং কনফার্মেশনের জন্য খসড়া তৈরি করলো।',
+        'Owner লিখলেন: "৫০ গজ কাপড় কিনলাম ২৫,০০০ টাকায়, ১০,০০০ টাকা বাকি রইলো।" সহকারী কোনো প্রশ্ন না করে হিসাব উল্টে সাজালো এবং কনফার্মেশনের জন্য খসড়া তৈরি করলো।',
       descEn:
-        'Rafiq Bhai says: "Bought 50 yards of fabric for 25,000 Tk, 10,000 Tk is on credit." The AI structures a pending draft without mutating the real database yet.',
+        'Owner says: "Bought 50 yards of fabric for 25,000 Tk, 10,000 Tk is on credit." The AI structures a pending draft without mutating the real database yet.',
       descZh:
         '拉菲克老板输入：“买了50码面料花费25,000，其中10,000挂账欠款。” AI 自动解析并生成待审批草案。',
       actionLabelBn: 'অপেক্ষমান খসড়ায় দেখুন',
@@ -81,9 +81,9 @@ export const RafiqBhaiWalkthroughModal: React.FC<WalkthroughProps> = ({
       titleEn: '3. Memo Photo Scan & Big Confirm Button',
       titleZh: '3. 单据照片扫描与大按钮确认',
       descBn:
-        'নবাবপুর মেটাল স্টোরের মেশিন মেরামতের ক্যাশ মেমো ছবি তুললেন। সহকারী খসড়া বানালো; সন্দেহজনক অঙ্ক লাল রঙে দাগিয়ে দিলো। রফিক ভাই বড় সবুজ Confirm বাটনে চাপ দিয়ে স্থায়ী করলেন।',
+        'নবাবপুর মেটাল স্টোরের মেশিন মেরামতের ক্যাশ মেমো ছবি তুললেন। সহকারী খসড়া বানালো; সন্দেহজনক অঙ্ক লাল রঙে দাগিয়ে দিলো। Owner বড় সবুজ Confirm বাটনে চাপ দিয়ে স্থায়ী করলেন।',
       descEn:
-        'He uploads a photo of a sewing machine repair receipt. AI flags high expenses in red. Rafiq Bhai clicks the prominent green Confirm button to log it into Excel.',
+        'He uploads a photo of a sewing machine repair receipt. AI flags high expenses in red. Owner clicks the prominent green Confirm button to log it into Excel.',
       descZh:
         '上传缝纫机维修收据照片。AI 用红色高亮可疑大额开支，老板点击显眼的绿色 Confirm 按钮正式入账。',
       actionLabelBn: 'খসড়া ও অনুমোদন স্ক্রিন',
@@ -99,7 +99,7 @@ export const RafiqBhaiWalkthroughModal: React.FC<WalkthroughProps> = ({
       titleEn: '4. Incoming Simulated bKash SMS Capture',
       titleZh: '4. 模拟移动支付短信自动捕获',
       descBn:
-        'ঢাকা ফ্যাশন হাব থেকে ২৫,০০০ টাকার bKash মেসেজ আসলো। সরাসরি ব্যালেন্সে যোগ না হয়ে এটি খসড়া তালিকায় উঠলো, রফিক ভাই যাচাই করে অনুমোদন করলেন।',
+        'ঢাকা ফ্যাশন হাব থেকে ২৫,০০০ টাকার bKash মেসেজ আসলো। সরাসরি ব্যালেন্সে যোগ না হয়ে এটি খসড়া তালিকায় উঠলো, Owner যাচাই করে অনুমোদন করলেন।',
       descEn:
         'An incoming simulated bKash SMS arrives: "Received Tk 25,000 from Dhaka Fashion Hub". Instead of auto-executing, it sits in staging awaiting 1-click verification.',
       descZh:
@@ -119,7 +119,7 @@ export const RafiqBhaiWalkthroughModal: React.FC<WalkthroughProps> = ({
       descBn:
         'করিম ট্রেডার্স ও বেঙ্গল গার্মেন্টস মার্টের বকেয়া ৩০,০০০ টাকার সীমা পেরিয়েছে। সিস্টেম সাথে সাথে জরুরি লাল অ্যালার্ট দিলো এবং হোয়াটসঅ্যাপ/এসএমএস তাগাদার ড্রাফট তৈরি করে দিলো।',
       descEn:
-        'Receivables from Bengal Garments Mart & Karim Traders exceed the 30,000 Tk risk threshold. The system alerts Rafiq Bhai with 1-click overdue collection messages.',
+        'Receivables from Bengal Garments Mart & Karim Traders exceed the 30,000 Tk risk threshold. The system alerts the Owner with 1-click overdue collection messages.',
       descZh:
         '客户挂账款超过 30,000 警戒线。系统立即触发红色预警，并一键生成催款草案。',
       actionLabelBn: 'বকেয়া অ্যালার্ট দেখুন',
@@ -135,9 +135,9 @@ export const RafiqBhaiWalkthroughModal: React.FC<WalkthroughProps> = ({
       titleEn: '6. "Need 1 Lakh for Eid" & 3 Loan Pressure Comparison',
       titleZh: '6. “开斋节需要10万备货”与三种贷款压力对比',
       descBn:
-        'রফিক ভাই লিখলেন: "ঈদে ১ লাখ লাগবে।" সহকারী ব্রেক-ইভেন ও কাঁচামাল পরিকল্পনা দিলো, সাথে ২৪ তারিখে ৳৩০,০০০ সম্ভাব্য ঘাটতি ধরে ৩টি ঋণের কিস্তির চাপ তুলনা করে দিলো (যেমন: ৬ মাসের ক্ষুদ্রঋণে মাসিক কিস্তি ৳৫,১৭৬ বনাম ব্যাংকে ৳৫,২৯৬—কোনটিতে চাপ কম)।',
+        'Owner লিখলেন: "ঈদে ১ লাখ লাগবে।" সহকারী ব্রেক-ইভেন ও কাঁচামাল পরিকল্পনা দিলো, সাথে ২৪ তারিখে ৳৩০,০০০ সম্ভাব্য ঘাটতি ধরে ৩টি ঋণের কিস্তির চাপ তুলনা করে দিলো (যেমন: ৬ মাসের ক্ষুদ্রঋণে মাসিক কিস্তি ৳৫,১৭৬ বনাম ব্যাংকে ৳৫,২৯৬—কোনটিতে চাপ কম)।',
       descEn:
-        'Rafiq Bhai asks: "Need 1 Lakh profit for Eid." AI reverse-engineers required shirts & fabric, detects a 30,000 Tk deficit on the 24th, and compares 3 loan options (e.g. EMI ~5,176 Tk vs 5,296 Tk) recommending the lowest cash-flow pressure option.',
+        'Owner asks: "Need 1 Lakh profit for Eid." AI reverse-engineers required shirts & fabric, detects a 30,000 Tk deficit on the 24th, and compares 3 loan options (e.g. EMI ~5,176 Tk vs 5,296 Tk) recommending the lowest cash-flow pressure option.',
       descZh:
         '拉菲克询问：“开斋节目标净利10万”。AI 倒推所需生产件数与布料采购，预测到24日存在30,000资金缺口，对比3种贷款方案（月供 5,176 vs 5,296），推荐现金流压力最小的方案。',
       actionLabelBn: 'ঋণ তুলনা ও সুপারিশ দেখুন',
@@ -201,8 +201,8 @@ export const RafiqBhaiWalkthroughModal: React.FC<WalkthroughProps> = ({
                   {currentLanguage === 'zh'
                     ? '拉菲克厂长的一天 (交互式全流程模拟)'
                     : currentLanguage === 'bn'
-                    ? 'রফিক ভাইয়ের একদিন (কাল্পনিক ইন্টারঅ্যাক্টিভ ডেমো)'
-                    : "Rafiq Bhai's Day (Interactive Scenario Simulation)"}
+                    ? 'Owner-এর একদিন (কাল্পনিক ইন্টারঅ্যাক্টিভ ডেমো)'
+                    : "Owner's Day (Interactive Scenario Simulation)"}
                 </h3>
               </div>
               <p className="text-[11px] text-indigo-200">
@@ -329,3 +329,5 @@ export const RafiqBhaiWalkthroughModal: React.FC<WalkthroughProps> = ({
     </AnimatePresence>
   );
 };
+
+export const RafiqBhaiWalkthroughModal = OwnerWalkthroughModal;
