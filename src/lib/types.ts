@@ -37,6 +37,11 @@ export interface Transaction {
   source: 'manual_form' | 'receipt_ocr' | 'automated_import' | 'ai_agent';
   evidenceNote?: string;
   createdAt: string;
+  isEdited?: boolean;
+  editedAt?: string;
+  editReason?: string;
+  previousAmount?: number;
+  receiptImage?: string;
 }
 
 export interface DebtorRecord {

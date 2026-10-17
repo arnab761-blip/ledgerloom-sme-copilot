@@ -15,6 +15,9 @@ import { SecurityAuditModal } from '@/components/SecurityAuditModal';
 import { SecurityAndLimitationsModal } from '@/components/SecurityAndLimitationsModal';
 import { RafiqBhaiWalkthroughModal } from '@/components/RafiqBhaiWalkthroughModal';
 import { UserGuideModal } from '@/components/UserGuideModal';
+import { ActivityFeed } from '@/components/ActivityFeed';
+import { AuthGate, AuthRole } from '@/components/AuthGate';
+import { exportExcelDatabaseInBrowser } from '@/lib/excel-exporter';
 import {
   BusinessProfile,
   Transaction,
@@ -42,11 +45,66 @@ import {
 
 export default function HomePage() {
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTabState] = useState('dashboard');
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
   const [isWalkthroughOpen, setIsWalkthroughOpen] = useState(false);
   const [isLimitationsOpen, setIsLimitationsOpen] = useState(false);
   const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
+
+  const setActiveTab = useCallback((tab: string) => {
+    setActiveTabState(tab);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('ledgerloom_active_tab', tab);
+        window.history.replaceState(null, '', `#${tab}`);
+      } catch {}
+    }
+  }, []);
+
+  // Sync activeTab from URL hash or localStorage on reload
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const validTabs = [
+      'dashboard',
+      'data_entry',
+      'staging',
+      'debtors',
+      'loans',
+      'financing',
+      'goal_planner',
+      'copilot',
+      'audit',
+    ];
+
+    const hash = window.location.hash.replace('#', '').trim();
+    const saved = localStorage.getItem('ledgerloom_active_tab');
+
+    let targetTab = 'dashboard';
+    if (hash && validTabs.includes(hash)) {
+      targetTab = hash;
+    } else if (saved && validTabs.includes(saved)) {
+      targetTab = saved;
+    }
+
+    setActiveTabState(targetTab);
+    try {
+      window.history.replaceState(null, '', `#${targetTab}`);
+    } catch {}
+
+    const handleHashChange = () => {
+      const currentHash = window.location.hash.replace('#', '').trim();
+      if (currentHash && validTabs.includes(currentHash)) {
+        setActiveTabState(currentHash);
+        try {
+          localStorage.setItem('ledgerloom_active_tab', currentHash);
+        } catch {}
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Multi-language state (Default: English for international track, easily switchable to Chinese, Bengali, Hindi)
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>('en');
@@ -61,6 +119,32 @@ export default function HomePage() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [remainingMinutes, setRemainingMinutes] = useState(0);
+
+  // Self-contained Role-based Authentication State (No Google OAuth Dependency)
+  const [authRole, setAuthRole] = useState<AuthRole | null>(null);
+  const [authUserName, setAuthUserName] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  const handleLoginSuccess = (role: AuthRole, userName: string) => {
+    setAuthRole(role);
+    setAuthUserName(userName);
+    if (role === 'owner') {
+      setIsUnlocked(true);
+      setExpiresAt(Date.now() + 30 * 60 * 1000);
+      setRemainingMinutes(30);
+    }
+  };
+
+  const handleLogout = () => {
+    setAuthRole(null);
+    setAuthUserName(null);
+    setIsUnlocked(false);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('ledgerloom_auth_role');
+      localStorage.removeItem('ledgerloom_auth_user');
+      localStorage.removeItem('ledgerloom_auth_time');
+    }
+  };
 
   // Financial Data State
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
@@ -167,6 +251,22 @@ export default function HomePage() {
     setCurrentLanguage(initialLang);
     setCurrentCurrency(initialCurr);
     loadFinancialData(initialLang, initialCurr);
+
+    // Restore authenticated role session
+    if (typeof window !== 'undefined') {
+      const savedRole = localStorage.getItem('ledgerloom_auth_role') as AuthRole | null;
+      const savedUser = localStorage.getItem('ledgerloom_auth_user');
+      if (savedRole && (savedRole === 'owner' || savedRole === 'manager' || savedRole === 'judge')) {
+        setAuthRole(savedRole);
+        setAuthUserName(savedUser || (savedRole === 'owner' ? 'Owner' : savedRole === 'manager' ? 'Manager' : 'Judge'));
+        if (savedRole === 'owner') {
+          setIsUnlocked(true);
+          setExpiresAt(Date.now() + 30 * 60 * 1000);
+          setRemainingMinutes(30);
+        }
+      }
+      setAuthChecked(true);
+    }
   }, []);
 
   const handleChangeLanguage = (lang: SupportedLanguage) => {
@@ -353,10 +453,12 @@ export default function HomePage() {
       type: txData.type || 'expense',
       category: txData.category || 'General',
       costType: txData.costType || 'variable',
+      partyName: txData.partyName || '',
       paymentMethod: txData.paymentMethod || 'cash',
       status: txData.status === 'approved' ? 'approved' : 'pending_approval',
       source: txData.source || 'manual_form',
       evidenceNote: txData.evidenceNote,
+      receiptImage: txData.receiptImage,
       createdAt: new Date().toISOString(),
     };
     const nextTxs = [newTx, ...transactions];
@@ -414,6 +516,42 @@ export default function HomePage() {
     );
     setTransactions(nextTxs);
     refreshAccounting(profile, nextTxs, debtors, loans);
+    return true;
+  };
+
+  const handleEditTransaction = async (updatedTx: Transaction) => {
+    try {
+      const res = await fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'edit_transaction', payload: updatedTx }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          await loadFinancialData(currentLanguage, currentCurrency);
+          return true;
+        }
+      }
+    } catch {
+      // Edge fallback
+    }
+
+    const nextTxs = transactions.map((t) => (t.id === updatedTx.id ? updatedTx : t));
+    setTransactions(nextTxs);
+    refreshAccounting(profile, nextTxs, debtors, loans);
+
+    const newAuditEntry: AuditLogEntry = {
+      id: `audit_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      action: 'EDIT_TRANSACTION',
+      actor: 'owner',
+      permissionTier: 'Tier-4-Execute',
+      targetEntity: updatedTx.id,
+      details: `সংশোধিত এন্ট্রি [${updatedTx.id}]: ${updatedTx.description} (৳${updatedTx.previousAmount?.toLocaleString()} ➔ ৳${updatedTx.amount.toLocaleString()})`,
+      status: 'success',
+    };
+    setAuditLogs((prev) => [newAuditEntry, ...prev]);
     return true;
   };
 
@@ -544,6 +682,18 @@ export default function HomePage() {
     return true;
   };
 
+  // Gated Access Security (Self-made code login gate - No Google OAuth dependency)
+  if (authChecked && !authRole) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+        <AuthGate
+          onLoginSuccess={handleLoginSuccess}
+          currentLanguage={currentLanguage}
+        />
+      </div>
+    );
+  }
+
   if (!dataLoaded || !profile || !metrics) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 text-white">
@@ -581,7 +731,7 @@ export default function HomePage() {
   ).length;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col w-full max-w-full overflow-x-hidden">
       <Header
         isUnlocked={isUnlocked}
         remainingMinutes={remainingMinutes}
@@ -599,9 +749,15 @@ export default function HomePage() {
         onOpenWalkthrough={() => setIsWalkthroughOpen(true)}
         onOpenLimitations={() => setIsLimitationsOpen(true)}
         onOpenUserGuide={() => setIsUserGuideOpen(true)}
+        authRole={authRole}
+        authUserName={authUserName}
+        onLogout={handleLogout}
+        onExportExcel={() =>
+          exportExcelDatabaseInBrowser(profile, transactions, debtors, loans, auditLogs)
+        }
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-x-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -609,7 +765,7 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, y: -12, filter: 'blur(3px)' }}
             transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
-            className="w-full"
+            className="w-full max-w-full overflow-x-hidden"
           >
             {activeTab === 'dashboard' && (
           <Dashboard
@@ -617,6 +773,7 @@ export default function HomePage() {
             profile={profile}
             debtors={debtors}
             loans={loans}
+            transactions={transactions}
             anomalies={anomalies}
             onNavigateTab={setActiveTab}
             currentLanguage={currentLanguage}
@@ -631,6 +788,7 @@ export default function HomePage() {
             onRefreshData={() => loadFinancialData(currentLanguage, currentCurrency)}
             onUpdateProfile={handleUpdateProfile}
             onAddTransaction={handleAddTransaction}
+            onEditTransaction={handleEditTransaction}
             isUnlocked={isUnlocked}
             onRequireUnlock={() => setIsSecurityModalOpen(true)}
             currentLanguage={currentLanguage}
@@ -711,44 +869,14 @@ export default function HomePage() {
         )}
 
         {activeTab === 'audit' && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-            <h3 className="text-base font-bold text-slate-900">
-              {t('auditTabHeading')}
-            </h3>
-            <p className="text-xs text-slate-500">
-              {t('auditTabDesc')}
-            </p>
-            <div className="max-h-96 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs">
-              {auditLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className="p-3 hover:bg-slate-50 transition flex items-start justify-between gap-3"
-                >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] text-slate-400">
-                        {log.id}
-                      </span>
-                      <span className="font-bold text-slate-900">
-                        {log.action}
-                      </span>
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-indigo-100 text-indigo-700">
-                        {log.permissionTier}
-                      </span>
-                    </div>
-                    <p className="text-slate-600 text-[11px]">{log.details}</p>
-                    <div className="text-[10px] text-slate-400">
-                      {t('auditActorLabel')}: {log.actor} • {t('auditTimeLabel')}:{' '}
-                      {new Date(log.timestamp).toLocaleString()}
-                    </div>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[9px]">
-                    {t('auditStatusSuccess')}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <ActivityFeed
+            transactions={transactions}
+            auditLogs={auditLogs}
+            debtors={debtors}
+            loans={loans}
+            currentLanguage={currentLanguage}
+            currentCurrency={currentCurrency}
+          />
         )}
           </motion.div>
         </AnimatePresence>

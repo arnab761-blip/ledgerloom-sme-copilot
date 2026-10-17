@@ -81,6 +81,11 @@ export async function POST(req: Request) {
         return NextResponse.json({ success });
       }
 
+      case 'edit_transaction': {
+        const updated = ExcelDatabase.editTransaction(payload);
+        return NextResponse.json({ success: !!updated, transaction: updated });
+      }
+
       case 'update_profile': {
         const updated = ExcelDatabase.updateProfile(payload);
         return NextResponse.json({ success: true, profile: updated });

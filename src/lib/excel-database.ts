@@ -549,6 +549,37 @@ export class ExcelDatabase {
     return true;
   }
 
+  public static editTransaction(updated: Transaction): Transaction | null {
+    this.ensureDatabaseFile();
+    const txs = this.getTransactions();
+    const index = txs.findIndex((t) => t.id === updated.id);
+    if (index === -1) return null;
+
+    const oldAmount = txs[index].amount;
+    txs[index] = {
+      ...txs[index],
+      ...updated,
+      isEdited: true,
+      editedAt: new Date().toISOString(),
+      previousAmount: oldAmount,
+    };
+
+    const wb = XLSX.readFile(DB_FILE_PATH);
+    wb.Sheets['Daily_Transactions'] = XLSX.utils.json_to_sheet(txs);
+    XLSX.writeFile(wb, DB_FILE_PATH);
+
+    this.logAudit({
+      actor: 'owner',
+      action: 'EDIT_TRANSACTION',
+      permissionTier: 'Tier-4-Execute',
+      targetEntity: updated.id,
+      details: `Edited transaction ${updated.id}: amount ${oldAmount} -> ${updated.amount}, note: ${updated.description}`,
+      status: 'success',
+    });
+
+    return txs[index];
+  }
+
   public static getDebtors(): DebtorRecord[] {
     this.ensureDatabaseFile();
     try {

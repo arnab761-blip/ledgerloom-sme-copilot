@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileSpreadsheet,
   PlusCircle,
@@ -12,10 +13,16 @@ import {
   CreditCard,
   Users,
   Lightbulb,
+  Edit3,
+  X,
+  FileText,
+  Download,
 } from 'lucide-react';
 import { BusinessProfile, Transaction } from '@/lib/types';
 import { SupportedLanguage, getTranslation } from '@/lib/i18n';
 import { SupportedCurrency, convertCurrency } from '@/lib/currency';
+import { StatementDownloadModal } from './StatementDownloadModal';
+import { exportExcelDatabaseInBrowser } from '@/lib/excel-exporter';
 
 interface DataEntryProps {
   profile: BusinessProfile;
@@ -23,6 +30,7 @@ interface DataEntryProps {
   onRefreshData: () => void;
   onUpdateProfile: (updated: Partial<BusinessProfile>) => Promise<boolean>;
   onAddTransaction: (tx: any) => Promise<boolean>;
+  onEditTransaction?: (tx: Transaction) => Promise<boolean>;
   isUnlocked: boolean;
   onRequireUnlock: () => void;
   currentLanguage: SupportedLanguage;
@@ -35,6 +43,7 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
   onRefreshData,
   onUpdateProfile,
   onAddTransaction,
+  onEditTransaction,
   isUnlocked,
   onRequireUnlock,
   currentLanguage,
@@ -46,6 +55,53 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
     getTranslation(currentLanguage, key, params);
 
   const [activeSubTab, setActiveSubTab] = useState<'profile' | 'new_tx' | 'sheet_view'>('new_tx');
+
+  // Edit Transaction Modal State
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [editAmount, setEditAmount] = useState<string>('');
+  const [editDescription, setEditDescription] = useState<string>('');
+  const [editCategory, setEditCategory] = useState<string>('');
+  const [editPartyName, setEditPartyName] = useState<string>('');
+  const [editPaymentMethod, setEditPaymentMethod] = useState<'cash' | 'bank_transfer' | 'mobile_money' | 'cheque'>('bank_transfer');
+  const [editLoading, setEditLoading] = useState(false);
+  const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
+
+  const handleStartEdit = (tx: Transaction) => {
+    setEditingTx(tx);
+    setEditAmount(tx.amount.toString());
+    setEditDescription(tx.description);
+    setEditCategory(tx.category);
+    setEditPartyName(tx.partyName || '');
+    setEditPaymentMethod(tx.paymentMethod);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isUnlocked) {
+      onRequireUnlock();
+      return;
+    }
+    if (!editingTx || !onEditTransaction) return;
+
+    setEditLoading(true);
+    try {
+      const updated: Transaction = {
+        ...editingTx,
+        amount: Number(editAmount),
+        previousAmount: editingTx.amount,
+        description: editDescription,
+        category: editCategory,
+        partyName: editPartyName,
+        paymentMethod: editPaymentMethod,
+        isEdited: true,
+        editedAt: new Date().toISOString(),
+      };
+      await onEditTransaction(updated);
+      setEditingTx(null);
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   // New Transaction Form State
   const [txType, setTxType] = useState<'income' | 'expense'>('income');
@@ -566,13 +622,34 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                 {t('bannerSync')} • LedgerLoom_Database.xlsx
               </p>
             </div>
-            <button
-              onClick={onRefreshData}
-              className="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center gap-1.5 transition text-slate-700"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Refresh
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => exportExcelDatabaseInBrowser(profile, transactions)}
+                className="px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg flex items-center gap-1.5 transition shadow-xs active:scale-95 cursor-pointer"
+                title="Download full Excel workbook (.xlsx)"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>{currentLanguage === 'bn' ? 'এক্সেল ডাউনলোড (.XLSX)' : 'Download .XLSX'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsStatementModalOpen(true)}
+                className="px-3 py-1.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white rounded-lg flex items-center gap-1.5 transition shadow-xs active:scale-95 cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{currentLanguage === 'bn' ? 'স্টেটমেন্ট' : 'Statement'}</span>
+              </button>
+
+              <button
+                onClick={onRefreshData}
+                className="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center gap-1.5 transition text-slate-700 active:scale-95 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Refresh
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto border border-slate-200 rounded-xl">
@@ -588,12 +665,23 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                   <th className="px-3 py-2.5 text-right">{t('amountLabel')} ({activeCurrency})</th>
                   <th className="px-3 py-2.5">{t('paymentMethodLabel')}</th>
                   <th className="px-3 py-2.5">{t('statusTh')}</th>
+                  <th className="px-3 py-2.5 text-center">{currentLanguage === 'bn' ? 'অ্যাকশন' : 'Action'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {transactions.map((tx) => (
                   <tr key={tx.id} className="hover:bg-slate-50/80 transition">
-                    <td className="px-3 py-2.5 font-mono text-[11px] text-slate-500">{tx.id}</td>
+                    <td className="px-3 py-2.5 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                      <span>{tx.id}</span>
+                      {tx.isEdited && (
+                        <span
+                          className="ml-1.5 inline-block px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-800 text-[9px] font-bold border border-amber-300"
+                          title={`Edited: ${tx.editedAt ? new Date(tx.editedAt).toLocaleTimeString() : ''}`}
+                        >
+                          ✏️ Edited
+                        </span>
+                      )}
+                    </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">{tx.date}</td>
                     <td className="px-3 py-2.5">
                       <span
@@ -616,6 +704,11 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                     >
                       {tx.type === 'income' ? '+' : '-'}
                       {conv(tx.amount).toLocaleString()} {activeCurrency}
+                      {tx.previousAmount && tx.previousAmount !== tx.amount && (
+                        <div className="text-[9px] text-slate-400 font-normal line-through">
+                          ({conv(tx.previousAmount).toLocaleString()})
+                        </div>
+                      )}
                       {activeCurrency !== 'BDT' && (
                         <div className="text-[10px] text-slate-400 font-normal">
                           (৳{tx.amount.toLocaleString()})
@@ -634,6 +727,17 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
                         {tx.status}
                       </span>
                     </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEdit(tx)}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 rounded-lg text-xs font-bold transition flex items-center gap-1 mx-auto cursor-pointer"
+                        title="Edit this entry / ভুল সংশোধন করুন"
+                      >
+                        <Edit3 className="w-3 h-3 text-indigo-600" />
+                        <span>{currentLanguage === 'bn' ? 'এডিট' : 'Edit'}</span>
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -641,6 +745,165 @@ export const DataEntryAndExcelSync: React.FC<DataEntryProps> = ({
           </div>
         </div>
       )}
+
+      {/* STATEMENT DOWNLOAD MODAL */}
+      <StatementDownloadModal
+        isOpen={isStatementModalOpen}
+        onClose={() => setIsStatementModalOpen(false)}
+        transactions={transactions}
+        profile={profile}
+        currentCurrency={activeCurrency}
+        currentLanguage={currentLanguage}
+      />
+
+      {/* EDIT TRANSACTION MODAL */}
+      <AnimatePresence>
+        {editingTx && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200"
+            >
+              <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+                    <Edit3 className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm">
+                      {currentLanguage === 'bn' ? 'লেনদেন সংশোধন (এডিট)' : 'Edit Transaction Entry'}
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      ID: {editingTx.id} • {editingTx.type.toUpperCase()}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingTx(null)}
+                  className="p-1 text-slate-400 hover:text-white rounded-lg transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                  <p>
+                    {currentLanguage === 'bn'
+                      ? 'এন্ট্রি সংশোধন করলে স্বচ্ছতার জন্য অডিট ট্রেইলে সংরক্ষিত হবে এবং [✏️ Edited] ফ্ল্যাগ শো করবে।'
+                      : 'Changes will be permanently logged in the audit trail with an [✏️ Edited] flag for total transparency.'}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      {currentLanguage === 'bn' ? 'সংশোধিত টাকার পরিমাণ' : 'Amount'} ({activeCurrency})
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      value={editAmount}
+                      onChange={(e) => setEditAmount(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    />
+                    {editingTx.amount !== Number(editAmount) && (
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        পূর্বের পরিমাণ: ৳{editingTx.amount.toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      {currentLanguage === 'bn' ? 'ক্যাটাগরি' : 'Category'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    {currentLanguage === 'bn' ? 'বিবরণ / পণ্যের বিবরণ' : 'Description'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      {currentLanguage === 'bn' ? 'পার্টি / ক্রেতা / ভেন্ডর' : 'Party / Counterparty'}
+                    </label>
+                    <input
+                      type="text"
+                      value={editPartyName}
+                      onChange={(e) => setEditPartyName(e.target.value)}
+                      placeholder="e.g. Acme Corp"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:bg-white focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      {currentLanguage === 'bn' ? 'পেমেন্ট মেথড' : 'Payment Method'}
+                    </label>
+                    <select
+                      value={editPaymentMethod}
+                      onChange={(e) => setEditPaymentMethod(e.target.value as any)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:bg-white"
+                    >
+                      <option value="cash">নগদ (Cash)</option>
+                      <option value="bank_transfer">ব্যাংক ট্রান্সফার (Bank Transfer)</option>
+                      <option value="mobile_money">বিকাশ / নগদ (Mobile Money)</option>
+                      <option value="cheque">চেক (Cheque)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setEditingTx(null)}
+                    className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                  >
+                    {currentLanguage === 'bn' ? 'বাতিল' : 'Cancel'}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editLoading}
+                    className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow transition flex items-center gap-1.5"
+                  >
+                    {editLoading ? (
+                      <span>{currentLanguage === 'bn' ? 'সংরক্ষণ হচ্ছে...' : 'Saving...'}</span>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        <span>{currentLanguage === 'bn' ? 'সংশোধন সংরক্ষণ করুন' : 'Save Changes'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

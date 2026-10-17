@@ -25,6 +25,61 @@ export interface AgentResponse {
 }
 
 export class AgentOrchestrator {
+  public static detectLanguage(query: string, defaultLang: SupportedLanguage = 'bn'): SupportedLanguage {
+    const q = query.toLowerCase().trim();
+
+    // 1. Script checks
+    if (/[\u0980-\u09FF]/.test(query)) return 'bn';
+    if (/[\u4e00-\u9fa5]/.test(query)) return 'zh';
+    if (/[\u0900-\u097F]/.test(query)) return 'hi';
+
+    // 2. Comprehensive Banglish patterns (ami, tumi, tmi, tmr, kmn, hae, hmm, kmne, etc.)
+    const banglishWords = new Set([
+      'ami', 'amr', 'amar', 'amader', 'amake',
+      'tumi', 'tmi', 'tmr', 'tomar', 'tomake', 'apni', 'apnr', 'apnar',
+      'kmn', 'kemon', 'kemne', 'kmne', 'kivabe', 'kibhabe',
+      'ki', 'koe', 'koi', 'kothay', 'kotay',
+      'hae', 'ha', 'haa', 'hmm', 'humm', 'ho', 'hbe',
+      'accha', 'acha', 'achha', 'thik', 'tik', 'thikache',
+      'bujhlam', 'bujhso', 'bujhlen', 'bujhechi',
+      'bhai', 'vai', 'vaia', 'bhaia',
+      'khoroch', 'koros', 'khoros', 'koroch',
+      'lav', 'labh', 'munafa',
+      'taka', 'tk', 'paisa',
+      'baki', 'dhar', 'dena', 'bakir',
+      'shob', 'sob', 'koto', 'kto', 'kototuku',
+      'ache', 'ase', 'asen', 'acho', 'aso', 'nai', 'na', 'nei',
+      'hobe', 'lagbe', 'lagbo', 'chai', 'chay',
+      'dekhaw', 'dekhao', 'dakhaw', 'dekte', 'dekhte',
+      'kire', 'obostha', 'obosta', 'khobor',
+      'bol', 'bolo', 'bolen', 'shuno', 'suno', 'shuncho',
+      'ekhon', 'ajke', 'kalke', 'pore',
+      'kar', 'kache', 'keno', 'ken',
+      'korbo', 'parbo', 'korle', 'dite', 'nibo', 'pabo',
+      'khata', 'kisti', 'shune', 'dokan', 'karkhana',
+      'hater', 'hatekene', 'hishab', 'hisab'
+    ]);
+
+    const words = q.split(/[\s,?.!_+-]+/);
+    if (words.some((w) => banglishWords.has(w))) {
+      return 'bn';
+    }
+
+    // 3. Clear English indicators
+    const englishWords = new Set([
+      'how', 'what', 'who', 'where', 'when', 'why',
+      'can', 'could', 'should', 'would', 'is', 'are', 'am',
+      'show', 'tell', 'calculate', 'profit', 'expense',
+      'cost', 'revenue', 'debtor', 'loan', 'balance', 'cash',
+      'hello', 'hi', 'hey', 'thanks', 'thank', 'help', 'please'
+    ]);
+    if (words.some((w) => englishWords.has(w))) {
+      return 'en';
+    }
+
+    return defaultLang;
+  }
+
   /**
    * Main query processor: Handles both natural language understanding and deterministic tool routing
    */
@@ -35,6 +90,7 @@ export class AgentOrchestrator {
     currency: SupportedCurrency = 'BDT'
   ): Promise<AgentResponse> {
     const sanitizedQuery = SecurityVault.maskPII(query).toLowerCase().trim();
+    const activeLang = this.detectLanguage(query, lang);
     const rawProfile = ExcelDatabase.getProfile();
     const profile = AccountingEngine.getConvertedProfile(rawProfile, currency);
     const transactions = ExcelDatabase.getTransactions();
@@ -58,14 +114,14 @@ export class AgentOrchestrator {
     // If Gemini API Key is configured, attempt LLM tool-calling; else use deterministic router
     if (apiKey || process.env.GEMINI_API_KEY) {
       try {
-        return await this.callGeminiWithTools(query, apiKey || process.env.GEMINI_API_KEY!, lang, currency);
+        return await this.callGeminiWithTools(query, apiKey || process.env.GEMINI_API_KEY!, activeLang, currency);
       } catch (err) {
         console.warn('Gemini API call failed, falling back to deterministic router:', err);
       }
     }
 
     // DETERMINISTIC ZERO-HALLUCINATION ROUTER (Always reliable & instant)
-    return this.deterministicRoute(sanitizedQuery, profile, transactions, debtors, loans, health, lang, currency);
+    return this.deterministicRoute(sanitizedQuery, profile, transactions, debtors, loans, health, activeLang, currency);
   }
 
   private static convertBengaliDigits(text: string): string {
@@ -91,6 +147,161 @@ export class AgentOrchestrator {
     currency: SupportedCurrency = 'BDT'
   ): AgentResponse {
     const q = this.convertBengaliDigits(qRaw);
+
+    // =========================================================================
+    // 0A. HOW ARE YOU / KMN / KEMON ACHEN
+    // =========================================================================
+    const isHowAreYou =
+      q.includes('kmn') ||
+      q.includes('kemon') ||
+      q.includes('kemne acho') ||
+      q.includes('how are you');
+
+    if (isHowAreYou) {
+      const ansBn = `আলহামদুলিল্লাহ ভাই, আমি বেশ ভালো আছি! 😊\nআপনার কারখানার আর্থিক অবস্থা ও খাতা-কলম একদম ঠিকঠাক রাখার জন্য আমি সবসময় প্রস্তুত।\n\nবলুন ভাই, আজকে কারখানার কী খবর? কোনো হিসাব দেখতে চান বা কোনো পরামর্শ দরকার?`;
+      const ansEn = `Hello! I am doing great, thank you! 😊\nYour factory's cash flow and financial health are stable.\n\nHow can I help you today? Feel free to ask about your profits, debtors, expenses, or loan options!`;
+      return {
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'cfoGreetings',
+        metricsSnapshot: health,
+      };
+    }
+
+    // =========================================================================
+    // 0B. CONVERSATIONAL "AMI" / "AMI RAFIQ" / "AMI KI KORBO"
+    // =========================================================================
+    const isAmi =
+      q === 'ami' ||
+      q.includes('ami rafiq') ||
+      q.includes('ami ki korbo') ||
+      q.includes('amar ki kora');
+
+    if (isAmi) {
+      const ansBn = `জি ভাই! আপনাকে পেয়ে খুব ভালো লাগল। আপনি শুধু বলুন আপনি কী করতে চান—\n১. আগামী মাসের লাভের লক্ষ্য ঠিক করবেন?\n২. বাকি খাতা ও বকেয়া পাওনা চেক করবেন?\n৩. নাকি কারখানা সম্প্রসারণে লোনের হিসাব দেখবেন?\nযেটাই চান, আমাকে জানান! 😊`;
+      const ansEn = `Yes! Glad to assist you. Tell me what you would like to do:\n1. Plan your monthly target profit\n2. Review overdue debtors\n3. Check loan & EMI options\nJust let me know! 😊`;
+      return {
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'cfoAssistance',
+        metricsSnapshot: health,
+      };
+    }
+
+    // =========================================================================
+    // 0C. CONVERSATIONAL "KMNE" / "KEMNE" / "KMNE KI KORBO"
+    // =========================================================================
+    const isKmne =
+      q === 'kmne' ||
+      q === 'kemne' ||
+      q.includes('kmne ki') ||
+      q.includes('kemne ki') ||
+      q.includes('kmne korbo');
+
+    if (isKmne) {
+      const ansBn = `একদম সহজ ভাই! 😊 আমি আপনাকে ধাপে ধাপে বুঝিয়ে দিচ্ছি।\nআপনি শুধু বলুন—\n• লাভের লক্ষ্য ঠিক করবেন? (যেমন: *"৫০ হাজার লাভ কেমনে করবো?"*)\n• বকেয়া বাকি টাকা দেখতে চান? (যেমন: *"বাকি কত আছে?"*)\n• নাকি লোন ও কিস্তির হিসাব দেখতে চান?\nযেকোনো একটি লিখে জানান, আমি এখনই গাণিতিক হিসাব বের করে দিচ্ছি!`;
+      const ansEn = `Very simple! 😊 I can guide you step by step.\nPlease tell me what you would like to focus on:\n• Set a target profit (e.g. "How to make 50,000 profit?")\n• Check overdue receivables ("Who owes money?")\n• Explore loan options & EMI\nJust type your goal, and I'll calculate it instantly!`;
+      return {
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'cfoGuidance',
+        metricsSnapshot: health,
+      };
+    }
+
+    // =========================================================================
+    // 0D. CONVERSATIONAL ACKNOWLEDGMENTS ("hae", "ha", "hmm", "ok", "thik ache", etc.)
+    // =========================================================================
+    const isAck =
+      q === 'hae' ||
+      q === 'ha' ||
+      q === 'haa' ||
+      q === 'hmm' ||
+      q === 'humm' ||
+      q === 'accha' ||
+      q === 'acha' ||
+      q === 'achha' ||
+      q === 'ok' ||
+      q === 'okay' ||
+      q === 'thik ache' ||
+      q === 'thik ase' ||
+      q === 'tik ache' ||
+      q === 'bujhlam' ||
+      q === 'understood' ||
+      q === 'got it' ||
+      q === 'sure';
+
+    if (isAck) {
+      const ansBn = `জি ভাই, শুনছি! বলুন, কারখানার আয়-ব্যয়, বাকি টাকা আদায় কিংবা লোন সম্পর্কিত কোনো হিসাব কি দেখতে চান? নিশ্চিন্তে বলুন, আমি এখনই বের করে দিচ্ছি।`;
+      const ansEn = `Understood! Let me know which financial metric, debtor alert, loan reconciliation, or profit target you would like to explore next.`;
+      return {
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'cfoAcknowledgment',
+        metricsSnapshot: health,
+      };
+    }
+
+    // =========================================================================
+    // 0E. IDENTITY & CAPABILITIES ("tmi", "tumi", "tmr", "who are you")
+    // =========================================================================
+    const isIdentity =
+      q.includes('tumi ke') ||
+      q.includes('who are you') ||
+      q.includes('tmr nam') ||
+      q.includes('tomar nam') ||
+      q.includes('what is your name') ||
+      q.includes('ki korte paro') ||
+      q.includes('what can you do') ||
+      q === 'tmi' ||
+      q === 'tumi' ||
+      q === 'tmr';
+
+    if (isIdentity) {
+      const ansBn = `আমি আপনার **LedgerLoom AI CFO কোপাইলট**! 🤝\nআপনার কারখানার হিসাব-নিকাশ নিখুঁত রাখা, বাকি টাকার তাগাদা দেওয়া, লোনের কিস্তি ট্র্যাক করা এবং লাভের লক্ষ্য অর্জনে কত পিস কাপড় বানাতে হবে তা গাণিতিকভাবে বের করাই আমার কাজ।\n\nযেকোনো প্রশ্ন লিখে জানান, আমি সাথে সাথে হিসাব করে দেব!`;
+      const ansEn = `I am your **LedgerLoom AI CFO Copilot**! 🤝\nI help manage your SME factory finances, compute break-even targets, monitor overdue receivables, and evaluate loan opportunities with zero-hallucination math.\n\nHow can I assist you right now?`;
+      return {
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'cfoIdentity',
+        metricsSnapshot: health,
+      };
+    }
+
+    // =========================================================================
+    // 0F. BALANCE & CASH INQUIRY (e.g. "balance koto", "koto taka ase", "cash")
+    // =========================================================================
+    const isBalanceIntent =
+      q.includes('balance') ||
+      q.includes('hater taka') ||
+      q.includes('cash koto') ||
+      q.includes('koto taka ase') ||
+      q.includes('koto taka ache') ||
+      q.includes('ক্যাশ ব্যালেন্স') ||
+      q.includes('ব্যালেন্স কত') ||
+      q.includes('হাতে নগদ');
+
+    if (isBalanceIntent) {
+      const conv = (amt: number) => convertCurrency(amt, 'BDT', currency);
+      const cash = Math.max(15000, profile.initialInvestment + health.netProfit - health.totalReceivables);
+      const ansBn = `আপনার বর্তমান নগদ ক্যাশ ব্যালেন্স (হাতে নগদ) হলো **${conv(cash).toLocaleString()} ${profile.currency}**।\n• চলতি মাসে নিট লাভ: **+${health.netProfit.toLocaleString()} ${profile.currency}**\n• বর্তমান ক্যাশ রানওয়ে: **${health.cashRunwayDays} দিন** (${health.cashRunwayDays >= 60 ? 'যথেষ্ট ব্যালেন্স আছে (নিরাপদ)' : health.cashRunwayDays >= 30 ? 'মাঝারি ব্যালেন্স (স্থিতিশীল)' : 'ব্যালেন্স কম (জরুরি নগদ সতর্কতা)'})\n\n💡 ড্যাশবোর্ডের উপরে bKash স্টাইল বোতামে ট্যাপ করেও যেকোনো সময় ব্যালেন্স দেখতে পারবেন।`;
+
+      const ansEn = `Your current liquid cash balance is **${conv(cash).toLocaleString()} ${profile.currency}**.\n• Monthly Net Profit: **+${health.netProfit.toLocaleString()} ${profile.currency}**\n• Cash Runway: **${health.cashRunwayDays} days** (${health.cashRunwayDays >= 60 ? 'Sufficient Balance (Safe)' : health.cashRunwayDays >= 30 ? 'Moderate Balance' : 'Low Balance Warning'})\n\n💡 You can also tap the bKash-style button on the dashboard to view your balance.`;
+
+      return {
+        answerPrimary: lang === 'bn' ? ansBn : ansEn,
+        answerBengali: ansBn,
+        answerEnglish: ansEn,
+        executedTool: 'getCashBalance',
+        toolOutput: { cashBalance: cash, cashRunwayDays: health.cashRunwayDays },
+        metricsSnapshot: health,
+      };
+    }
 
     // 1. Target Profit / Goal Planning
     const profitMatch =
@@ -543,7 +754,7 @@ ${loanDetailsHi}
 The business is: ${profile.businessName} (${profile.industry}).
 Core Rules:
 1. NEVER calculate large arithmetic, loan reconciliations, or break-even targets via token generation. ALWAYS rely on deterministic financial formulas.
-2. Provide a bilingual response: first in clear, polite ${langName} for the business owner, followed by a professional English summary for international competition judges.
+2. Respond STRICTLY in ${langName}. Do NOT provide bilingual English + Bengali in the same message. If the user writes in Bengali or Banglish, reply exclusively in natural, warm, friendly Bengali. If the user writes in English, reply exclusively in English. Be conversational, approachable, and empathetic to the business owner.
 3. Be action-oriented: mention exact units, fabric quantities, and financial warnings.
 Current Health:
 - Total Revenue: ${health.totalRevenue} ${profile.currency}

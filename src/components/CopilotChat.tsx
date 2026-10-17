@@ -281,16 +281,18 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
               )}
 
               {/* Primary response in selected language */}
-              <div className="whitespace-pre-line font-sans text-slate-900">{m.primaryText}</div>
+              <div className="whitespace-pre-line font-sans text-slate-900 leading-relaxed">{m.primaryText}</div>
 
-              {/* English summary for international competition judges (if primary is not English) */}
+              {/* Optional English translation for international competition judges (hidden by default) */}
               {m.englishText && m.englishText !== m.primaryText && currentLanguage !== 'en' && (
-                <div className="pt-2 mt-2 border-t border-slate-100 text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-lg font-sans">
-                  <div className="font-semibold text-slate-500 uppercase tracking-wider text-[9px] mb-1">
-                    English Summary (For International Judges)
+                <details className="pt-1.5 mt-2 border-t border-slate-100 text-[10px] text-slate-500 group">
+                  <summary className="cursor-pointer text-[10px] font-medium text-slate-400 hover:text-indigo-600 inline-flex items-center gap-1 transition select-none">
+                    <span>🌐 Judge View (English Translation)</span>
+                  </summary>
+                  <div className="mt-1.5 p-2 bg-slate-50 border border-slate-100 rounded-lg text-slate-600 whitespace-pre-line text-[11px] font-sans">
+                    {m.englishText}
                   </div>
-                  <div className="whitespace-pre-line">{m.englishText}</div>
-                </div>
+                </details>
               )}
 
               {/* Interactive Action Button (if suggested) */}

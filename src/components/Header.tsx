@@ -17,6 +17,10 @@ import {
   SlidersHorizontal,
   ChevronRight,
   FileSpreadsheet,
+  LogOut,
+  Crown,
+  Briefcase,
+  Scale,
 } from 'lucide-react';
 import {
   SupportedLanguage,
@@ -27,6 +31,7 @@ import {
   SupportedCurrency,
   SUPPORTED_CURRENCIES,
 } from '@/lib/currency';
+import { exportExcelDatabaseInBrowser } from '@/lib/excel-exporter';
 
 interface HeaderProps {
   isUnlocked: boolean;
@@ -45,6 +50,10 @@ interface HeaderProps {
   onOpenWalkthrough?: () => void;
   onOpenLimitations?: () => void;
   onOpenUserGuide?: () => void;
+  authRole?: 'owner' | 'manager' | 'judge' | null;
+  authUserName?: string | null;
+  onLogout?: () => void;
+  onExportExcel?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -64,12 +73,24 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenWalkthrough,
   onOpenLimitations,
   onOpenUserGuide,
+  authRole = 'owner',
+  authUserName,
+  onLogout,
+  onExportExcel,
 }) => {
   const [uploading, setUploading] = useState(false);
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const [isCurrencyMenuOpen, setIsCurrencyMenuOpen] = useState(false);
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const handleDownloadExcel = () => {
+    if (onExportExcel) {
+      onExportExcel();
+    } else {
+      exportExcelDatabaseInBrowser();
+    }
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navRef = useRef<HTMLDivElement>(null);
@@ -96,6 +117,10 @@ export const Header: React.FC<HeaderProps> = ({
 
   const t = (key: string, params?: Record<string, string | number>) =>
     getTranslation(currentLanguage, key, params);
+
+  const stripLeadingEmoji = (text: string) => {
+    return text.replace(/^[\p{Extended_Pictographic}\u2000-\u3300\uFE0F\u200D\s]+/u, '').trim();
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -186,22 +211,31 @@ export const Header: React.FC<HeaderProps> = ({
             >
             {/* Drawer Header */}
             <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-sky-500 to-emerald-400 flex items-center justify-center font-black text-lg shadow-md">
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.96 }}
+                onClick={() => {
+                  selectTab('dashboard');
+                  setIsDrawerOpen(false);
+                }}
+                className="flex items-center gap-2.5 text-left group cursor-pointer focus:outline-none"
+                title="Go to Dashboard / মূল ড্যাশবোর্ডে ফিরুন"
+              >
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-sky-500 to-emerald-400 flex items-center justify-center font-black text-lg shadow-md group-hover:scale-105 transition-transform">
                   LL
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm tracking-tight text-white flex items-center gap-1.5">
+                  <h3 className="font-bold text-sm tracking-tight text-white flex items-center gap-1.5 group-hover:text-indigo-300 transition-colors">
                     LedgerLoom
                     <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
                       SME
                     </span>
                   </h3>
                   <p className="text-[10px] text-slate-400">
-                    {currentLanguage === 'bn' ? 'নেভিগেশন মেনু' : 'Navigation Menu'}
+                    {currentLanguage === 'bn' ? 'ড্যাশবোর্ডে ফিরুন' : 'Return to Dashboard'}
                   </p>
                 </div>
-              </div>
+              </motion.button>
               <button
                 onClick={() => setIsDrawerOpen(false)}
                 className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition"
@@ -270,8 +304,8 @@ export const Header: React.FC<HeaderProps> = ({
                     }`}
                   >
                     <span className="flex items-center gap-2.5">
-                      <span className="text-sm">{tab.icon}</span>
-                      <span>{tab.label}</span>
+                      <span className="text-sm flex-shrink-0">{tab.icon}</span>
+                      <span>{stripLeadingEmoji(tab.label)}</span>
                     </span>
                     {tab.badge && (
                       <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black">
@@ -327,33 +361,88 @@ export const Header: React.FC<HeaderProps> = ({
                   <span>{t('uploadExcel')}</span>
                 </button>
 
-                {/* Download Excel */}
-                <a
-                  href="/api/export-excel"
-                  download="LedgerLoom_Database.xlsx"
+                {/* Download Excel (.XLSX) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    handleDownloadExcel();
+                  }}
                   className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 flex items-center gap-2 transition"
-                  onClick={() => setIsDrawerOpen(false)}
                 >
                   <Download className="w-4 h-4 text-emerald-400" />
                   <span>{t('downloadExcel')}</span>
-                </a>
+                </button>
               </div>
             </div>
 
-            {/* Drawer Footer */}
-            <div className="p-3 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between text-[11px] text-slate-400">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>{isUnlocked ? t('vaultUnlocked') : t('vaultLocked')}</span>
-              </span>
+            {/* Drawer Footer with Role & Lock/Logout */}
+            <div className="p-3 border-t border-slate-800 bg-slate-950/80 space-y-2">
+              {authRole && (
+                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900 border border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
+                      {authRole === 'owner' ? '👑' : authRole === 'manager' ? '💼' : '⚖️'}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white">
+                        {authRole === 'owner'
+                          ? currentLanguage === 'bn' ? 'মালিক (Owner)' : 'Owner'
+                          : authRole === 'manager'
+                          ? currentLanguage === 'bn' ? 'ম্যানেজার (Manager)' : 'Manager'
+                          : currentLanguage === 'bn' ? 'জাজ অডিট (Judge)' : 'Judge'}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        {authUserName || 'Verified Session'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {onLogout && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDrawerOpen(false);
+                        onLogout();
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold hover:bg-rose-500/30 transition flex items-center gap-1"
+                    >
+                      <LogOut className="w-3 h-3 text-rose-400" />
+                      <span>{currentLanguage === 'bn' ? 'লক' : 'Lock'}</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
               <button
+                type="button"
                 onClick={() => {
                   setIsDrawerOpen(false);
                   onOpenSecurityModal();
                 }}
-                className="text-indigo-400 hover:underline font-semibold"
+                className={`w-full p-2.5 rounded-xl border flex items-center justify-between text-xs font-semibold transition ${
+                  isUnlocked
+                    ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60'
+                    : 'bg-amber-950/60 border-amber-500/40 text-amber-300 hover:bg-amber-900/60'
+                }`}
               >
-                PIN: 2026
+                <span className="flex items-center gap-2">
+                  {isUnlocked ? (
+                    <Unlock className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <Lock className="w-4 h-4 text-amber-400" />
+                  )}
+                  <span>
+                    {isUnlocked
+                      ? `${t('vaultUnlocked')} (${remainingMinutes}m)`
+                      : currentLanguage === 'bn'
+                      ? 'ভল্ট আনলক করুন'
+                      : 'Unlock Vault'}
+                  </span>
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                  PIN: 2026
+                </span>
               </button>
             </div>
           </motion.div>
@@ -362,11 +451,11 @@ export const Header: React.FC<HeaderProps> = ({
     </AnimatePresence>
 
       {/* ================= CLEAN HEADER BAR ================= */}
-      <header className="sticky top-0 z-40 bg-slate-900 text-white shadow-xl border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5">
+      <header className="sticky top-0 z-40 bg-slate-900 text-white shadow-xl border-b border-slate-800 w-full">
+        <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-2.5">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
             {/* Left: Hamburger Button + Logo + Title */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               {/* Hamburger Button (☰) */}
               <motion.button
                 whileHover={{ scale: 1.04 }}
@@ -383,14 +472,22 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               </motion.button>
 
-              {/* Logo & Brand */}
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 via-sky-500 to-emerald-400 flex items-center justify-center shadow-md font-black text-sm">
+              {/* Logo & Brand (Clickable to return to Dashboard) */}
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => selectTab('dashboard')}
+                className="flex items-center gap-2 group text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded-xl"
+                title={currentLanguage === 'bn' ? 'ড্যাশবোর্ডে ফিরে যান' : 'Go to Dashboard'}
+                aria-label="LedgerLoom Dashboard"
+              >
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 via-sky-500 to-emerald-400 flex items-center justify-center shadow-md font-black text-sm text-white group-hover:scale-105 transition-transform duration-200">
                   LL
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <h1 className="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-1">
+                    <h1 className="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-1 group-hover:text-indigo-300 transition-colors">
                       LedgerLoom
                       <span className="hidden sm:inline-block text-[10px] font-semibold px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
                         SME
@@ -405,34 +502,34 @@ export const Header: React.FC<HeaderProps> = ({
                     {t('competitionTrack')}
                   </p>
                 </div>
-              </div>
+              </motion.button>
             </div>
 
-            {/* Center: Current Active Tab Badge (Mobile/Desktop indicator) */}
+            {/* Center: Current Active Tab Badge (Desktop indicator) */}
             <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/90 border border-slate-700/80 text-xs font-bold text-slate-300">
               <span className="w-2 h-2 rounded-full bg-indigo-400" />
-              <span>{currentTabObj.label}</span>
+              <span>{stripLeadingEmoji(currentTabObj.label)}</span>
             </div>
 
             {/* Right: Quick Tools, Language, Currency, Guide & Security */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              {/* User Guide Button (Clean & Prominent) */}
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+              {/* User Guide Button (Desktop & Tablet only, since it is in mobile ☰ drawer) */}
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.94 }}
                 type="button"
                 onClick={onOpenUserGuide}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white shadow-sm transition border border-emerald-400/30"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white shadow-sm transition border border-emerald-400/30 flex-shrink-0"
                 title="User Guide & Step-by-Step Manual"
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">
+                <span>
                   {currentLanguage === 'bn' ? 'ইউজার গাইড' : 'User Guide'}
                 </span>
               </motion.button>
 
-              {/* Tools Dropdown (Replaces messy Upload, Download buttons on header) */}
-              <div className="relative">
+              {/* Tools Dropdown (Desktop & Tablet only, since all tools are inside ☰ mobile drawer) */}
+              <div className="relative hidden sm:block flex-shrink-0">
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.94 }}
@@ -471,15 +568,17 @@ export const Header: React.FC<HeaderProps> = ({
                         <span>{t('uploadExcel')}</span>
                       </button>
 
-                      <a
-                        href="/api/export-excel"
-                        download="LedgerLoom_Database.xlsx"
-                        onClick={() => setIsToolsMenuOpen(false)}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsToolsMenuOpen(false);
+                          handleDownloadExcel();
+                        }}
                         className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-slate-700 text-slate-200 transition"
                       >
                         <Download className="w-3.5 h-3.5 text-emerald-400" />
                         <span>{t('downloadExcel')}</span>
-                      </a>
+                      </button>
 
                       <div className="border-t border-slate-700/60 my-1" />
 
@@ -531,7 +630,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
 
               {/* Language Selector Dropdown */}
-              <div className="relative">
+              <div className="relative flex-shrink-0">
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.94 }}
@@ -584,7 +683,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
 
               {/* Currency Selector Dropdown */}
-              <div className="relative">
+              <div className="relative flex-shrink-0">
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.94 }}
@@ -636,29 +735,80 @@ export const Header: React.FC<HeaderProps> = ({
                 </AnimatePresence>
               </div>
 
-              {/* 30-min Security Vault Pill */}
+              {/* Role Indicator & Lock / Logout Button (Gated Access Indicator) */}
+              {authRole && (
+                <div className="flex items-center gap-1 sm:gap-1.5 bg-slate-800/90 p-0.5 sm:p-1 rounded-xl border border-slate-700/80 flex-shrink-0">
+                  <div
+                    className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold ${
+                      authRole === 'owner'
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        : authRole === 'manager'
+                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    }`}
+                    title={authUserName || 'Authenticated User'}
+                  >
+                    {authRole === 'owner' ? (
+                      <Crown className="w-3.5 h-3.5 text-amber-400" />
+                    ) : authRole === 'manager' ? (
+                      <Briefcase className="w-3.5 h-3.5 text-indigo-400" />
+                    ) : (
+                      <Scale className="w-3.5 h-3.5 text-emerald-400" />
+                    )}
+                    <span className="hidden sm:inline">
+                      {authRole === 'owner'
+                        ? currentLanguage === 'bn' ? 'মালিক' : 'Owner'
+                        : authRole === 'manager'
+                        ? currentLanguage === 'bn' ? 'ম্যানেজার' : 'Manager'
+                        : currentLanguage === 'bn' ? 'জাজ ভিউ' : 'Judge'}
+                    </span>
+                  </div>
+
+                  {onLogout && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.92 }}
+                      type="button"
+                      onClick={onLogout}
+                      className="p-1 sm:p-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 transition shadow-xs flex items-center gap-1"
+                      title={currentLanguage === 'bn' ? 'লক / লগআউট করুন' : 'Lock / Logout Session'}
+                      aria-label="Logout"
+                    >
+                      <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                      <span className="text-[10px] font-bold hidden lg:inline">
+                        {currentLanguage === 'bn' ? 'লক' : 'Lock'}
+                      </span>
+                    </motion.button>
+                  )}
+                </div>
+              )}
+
+              {/* 30-min Security Vault Pill (ALWAYS VISIBLE & PROMINENT ON ALL DEVICES) */}
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.94 }}
                 onClick={onOpenSecurityModal}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl border transition ${
+                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-xl border transition flex-shrink-0 shadow-sm ${
                   isUnlocked
-                    ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900/60'
-                    : 'bg-amber-950/60 text-amber-300 border-amber-500/40 hover:bg-amber-900/60'
+                    ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50 hover:bg-emerald-900/80'
+                    : 'bg-amber-950/80 text-amber-300 border-amber-500/50 hover:bg-amber-900/80'
                 }`}
                 title="Owner Security Vault & Compliance"
+                aria-label="Security Vault"
               >
                 {isUnlocked ? (
                   <>
-                    <Unlock className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="hidden sm:inline">
-                      {remainingMinutes}{t('remainingMin')}
+                    <Unlock className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                    <span className="text-[11px] font-bold">
+                      {remainingMinutes}m
                     </span>
                   </>
                 ) : (
                   <>
-                    <Lock className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="hidden sm:inline">{t('vaultLocked')}</span>
+                    <Lock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                    <span className="text-[11px] font-bold">
+                      {currentLanguage === 'bn' ? 'ভল্ট' : 'Vault'}
+                    </span>
                   </>
                 )}
               </motion.button>
@@ -705,7 +855,7 @@ export const Header: React.FC<HeaderProps> = ({
                   }`}
                 >
                   <span>{tab.icon}</span>
-                  <span>{tab.label.replace(/^[^\s]+\s/, '')}</span>
+                  <span>{stripLeadingEmoji(tab.label)}</span>
                   {tab.badge && (
                     <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
                       {tab.badge}
