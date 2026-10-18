@@ -307,8 +307,8 @@ export class AgentOrchestrator {
 
     // 1. Target Profit / Goal Planning
     const profitMatch =
-      q.match(/(\d+[\d,]*)\s*(?:টাকা|tk|bdt|元|rmb|\$|rs|rupees)?\s*(?:লাভ|profit|ইনকাম|আয়|利润|赚|लाभ)/i) ||
-      q.match(/(?:লাভ|profit|ইনকাম|আয়|利润|赚|लाभ)\s*(?:করতে চাই|হিসাব|目标)?\s*(\d+[\d,]*)/i) ||
+      q.match(/(\d+[\d,]*)\s*(?:টাকা|tk|bdt|元|rmb|\$|rs|rupees)?\s*(?:净)?(?:লাভ|profit|ইনকাম|আয়|利润|赚|लाभ)/i) ||
+      q.match(/(?:লাভ|profit|ইনকাম|আয়|利润|赚|लाभ|净利润)\s*(?:করতে চাই|হিসাব|目标)?\s*(\d+[\d,]*)/i) ||
       q.match(/(\d+[\d,]*)\s*(?:হাজার|k|万)/i);
 
     const isGoalIntent =

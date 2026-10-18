@@ -383,8 +383,12 @@ Key Capabilities:
       q.includes('ব্যাংক লোন') ||
       q.includes('loan scheme') ||
       q.includes('lone scheme') ||
-      ((q.includes('lone') || q.includes('loan') || q.includes('লোন') || q.includes('ঋণ')) &&
-       (q.includes('option') || q.includes('অপশন') || q.includes('dekhao') || q.includes('দেকাও') || q.includes('দেখাও') || q.includes('kothay') || q.includes('bhalo') || q.includes('সুবিধা') || q.includes('list')));
+      q.includes('贷款方案') ||
+      q.includes('融资方案') ||
+      q.includes('推荐贷款') ||
+      q.includes('ऋण विकल्प') ||
+      ((q.includes('lone') || q.includes('loan') || q.includes('লোন') || q.includes('ঋণ') || q.includes('贷款') || q.includes('ऋण')) &&
+       (q.includes('option') || q.includes('অপশন') || q.includes('dekhao') || q.includes('দেকাও') || q.includes('দেখাও') || q.includes('kothay') || q.includes('bhalo') || q.includes('সুবিধা') || q.includes('list') || q.includes('方案') || q.includes('विकल्प')));
 
     if (isFinancingMatchIntent) {
       const options = AccountingEngine.matchFinancingOptions(convertedProfile, health, debtors, activeLang, currency);
@@ -483,7 +487,12 @@ Key Capabilities:
       q.includes('lone baki') ||
       q.includes('rin baki') ||
       q.includes('how much debt') ||
-      q.includes('remaining debt');
+      q.includes('remaining debt') ||
+      q.includes('贷款') ||
+      q.includes('还款') ||
+      q.includes('月供') ||
+      q.includes('कर्ज') ||
+      q.includes('किस्त');
 
     if (isLoanIntent) {
       const loanSummary = AccountingEngine.reconcileAllLoans(loans, currency);
@@ -542,7 +551,13 @@ ${loanDetailsEn}
       q.includes('বাকি') ||
       q.includes('পাওনা') ||
       q.includes('বকেয়া') ||
-      q.includes('তাগাদা');
+      q.includes('তাগাদা') ||
+      q.includes('owe') ||
+      q.includes('应收') ||
+      q.includes('欠款') ||
+      q.includes('催款') ||
+      q.includes('बकाया') ||
+      q.includes('उधारी');
 
     if (isDebtorIntent) {
       const riskThreshold = getOverdueThreshold(currency);
@@ -589,7 +604,10 @@ ${overdueList.map((d) => `• **${d.partyName}**: ${conv(d.amount).toLocaleStrin
       q.includes('beshi khoroch') ||
       q.includes('bill') ||
       q.includes('খরচ') ||
-      q.includes('কোথায় সবচেয়ে বেশি খরচ');
+      q.includes('কোথায় সবচেয়ে বেশি খরচ') ||
+      q.includes('开支') ||
+      q.includes('成本') ||
+      q.includes('खर्च');
 
     if (isExpenseIntent) {
       const salaries = convertedProfile.workerSalariesMonthly || 0;
@@ -639,9 +657,9 @@ ${items.map((it) => `  • ${it.nameEn}: ${it.amount.toLocaleString()} ${convert
     // 10. TARGET PROFIT & GOAL PLANNING (e.g. "৫০,০০০ টাকা লাভ করতে কি করতে হবে?")
     // =========================================================================
     const profitMatch =
-      q.match(/(\d+[\d,]*)\s*(?:টাকা|tk|bdt|元|rmb|\$|rs|rupees)?\s*(?:লাভ|profit|ইনকাম|আয়|labh)/i) ||
-      q.match(/(?:লাভ|profit|ইনকাম|আয়|labh)\s*(?:করতে চাই|হিসাব|目标)?\s*(\d+[\d,]*)/i) ||
-      q.match(/(\d+[\d,]*)\s*(?:হাজার|k|hajar|lakh|লাখ)/i);
+      q.match(/(\d+[\d,]*)\s*(?:টাকা|tk|bdt|元|rmb|\$|rs|rupees)?\s*(?:净)?(?:লাভ|profit|ইনকাম|আয়|labh|利润|赚|लाभ)/i) ||
+      q.match(/(?:লাভ|profit|ইনকাম|আয়|labh|利润|赚|लाभ|净利润)\s*(?:করতে চাই|হিসাব|目标)?\s*(\d+[\d,]*)/i) ||
+      q.match(/(\d+[\d,]*)\s*(?:হাজার|k|hajar|lakh|লাখ|万)/i);
 
     const isGoalIntent =
       profitMatch ||
@@ -653,7 +671,10 @@ ${items.map((it) => `  • ${it.nameEn}: ${it.amount.toLocaleString()} ${convert
       q.includes('profit') ||
       q.includes('labh') ||
       q.includes('koto bechte hobe') ||
-      q.includes('koto bikri');
+      q.includes('koto bikri') ||
+      q.includes('目标') ||
+      q.includes('利润') ||
+      q.includes('लक्ष्य');
 
     if (isGoalIntent) {
       let targetAmount = Number(getDefaultTargetProfit(currency));
@@ -661,6 +682,7 @@ ${items.map((it) => `  • ${it.nameEn}: ${it.amount.toLocaleString()} ${convert
         targetAmount = parseInt(profitMatch[1].replace(/,/g, ''), 10);
         if (q.includes('হাজার') || q.includes('hajar') || q.includes('k')) targetAmount *= 1000;
         if (q.includes('লাখ') || q.includes('lakh')) targetAmount *= 100000;
+        if (q.includes('万')) targetAmount *= 10000;
       }
       const plan = AccountingEngine.solveTargetProfit(convertedProfile, targetAmount, 'month');
 

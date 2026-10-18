@@ -74,47 +74,71 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
     ]);
   }, [currentLanguage]);
 
-  // Currency-aware prompt values
-  const targetProfitText =
-    currentCurrency === 'USD'
-      ? '$500'
-      : currentCurrency === 'CNY'
-      ? '¥3,000'
-      : '৫০,০০০ টাকা';
+  // Helper to format target profit and debtor threshold based on active language & currency
+  const getPromptValues = (lang: SupportedLanguage, curr: SupportedCurrency) => {
+    if (lang === 'bn') {
+      const targetProfit =
+        curr === 'USD' ? '$৫০০' : curr === 'CNY' ? '¥৩,০০০' : '৫০,০০০ টাকা';
+      const debtorOverdue =
+        curr === 'USD' ? '>$২৫০' : curr === 'CNY' ? '>¥১,৮০০' : '>৩০,০০০';
+      return { targetProfit, debtorOverdue };
+    }
 
-  const debtorOverdueText =
-    currentCurrency === 'USD'
-      ? '>$250'
-      : currentCurrency === 'CNY'
-      ? '>¥1,800'
-      : '>৩০,০০০';
+    if (lang === 'zh') {
+      const targetProfit =
+        curr === 'USD' ? '$500' : curr === 'CNY' ? '¥3,000' : '50,000 BDT';
+      const debtorOverdue =
+        curr === 'USD' ? '>$250' : curr === 'CNY' ? '>¥1,800' : '>30,000';
+      return { targetProfit, debtorOverdue };
+    }
+
+    if (lang === 'hi') {
+      const targetProfit =
+        curr === 'USD' ? '$500' : curr === 'CNY' ? '¥3,000' : '50,000 BDT';
+      const debtorOverdue =
+        curr === 'USD' ? '>$250' : curr === 'CNY' ? '>¥1,800' : '>30,000';
+      return { targetProfit, debtorOverdue };
+    }
+
+    // Default 'en'
+    const targetProfit =
+      curr === 'USD' ? '$500' : curr === 'CNY' ? '¥3,000' : '50,000 BDT';
+    const debtorOverdue =
+      curr === 'USD' ? '>$250' : curr === 'CNY' ? '>¥1,800' : '>30,000';
+    return { targetProfit, debtorOverdue };
+  };
+
+  const { targetProfit: enTarget, debtorOverdue: enOverdue } = getPromptValues('en', currentCurrency);
+  const { targetProfit: zhTarget, debtorOverdue: zhOverdue } = getPromptValues('zh', currentCurrency);
+  const { targetProfit: bnTarget, debtorOverdue: bnOverdue } = getPromptValues('bn', currentCurrency);
+  const { targetProfit: hiTarget, debtorOverdue: hiOverdue } = getPromptValues('hi', currentCurrency);
 
   const quickPromptsByLang: Record<SupportedLanguage, string[]> = {
     en: [
       'Show financing options',
-      `I want to make ${targetProfitText} profit next month, what to do?`,
-      `Who owes overdue money (${debtorOverdueText})?`,
+      `I want to make ${enTarget} profit next month, what to do?`,
+      `Who owes overdue money (${enOverdue})?`,
       'How much debt is remaining and EMI?',
       'Where did we spend the most overhead?',
     ],
     zh: [
       '显示适合我的贷款方案',
-      `下个月想要赚 ${targetProfitText} 净利润，需要做什么？`,
-      `有哪些客户欠款超过 ${debtorOverdueText} 警戒线？`,
+      `下个月想要赚 ${zhTarget} 净利润，需要做什么？`,
+      `有哪些客户欠款超过 ${zhOverdue} 警戒线？`,
       '当前剩余贷款本金及月供是多少？',
       '哪项成本开支占比最高？',
     ],
     bn: [
       'লোনের অপশনগুলো দেখাও',
-      `সামনের মাসে ${targetProfitText} লাভ করতে চাই, কি কি করতে হবে?`,
-      `কার কাছে কত টাকা বাকি আছে (${debtorOverdueText})?`,
+      `সামনের মাসে ${bnTarget} লাভ করতে চাই, কি কি করতে হবে?`,
+      `কার কাছে কত টাকা বাকি আছে (${bnOverdue})?`,
       'ঋণ কত বাকি আছে এবং মাসিক কিস্তির হিসাব দাও',
       'কোথায় সবচেয়ে বেশি খরচ হয়েছে?',
     ],
     hi: [
       'ऋण विकल्प दिखाओ',
-      `अगले महीने ${targetProfitText} लाभ कमाने के लिए क्या करें?`,
-      `किन ग्राहकों का ${debtorOverdueText} से अधिक बकाया है?`,
+      `अगले महीने ${hiTarget} लाभ कमाने के लिए क्या करें?`,
+      `किन ग्राहकों का ${hiOverdue} से अधिक बकाया है?`,
       'कुल कितना ऋण बाकी है और मासिक किस्त?',
       'सबसे ज्यादा खर्च किस मद में हुआ?',
     ],
